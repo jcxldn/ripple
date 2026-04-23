@@ -13,6 +13,7 @@ add_executable(ripple::discovery ALIAS ${PROJECT})
 target_sources(${PROJECT}
     PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/src/discovery.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/src/node.cpp
 )
 
 target_include_directories(${PROJECT}
@@ -21,6 +22,11 @@ target_include_directories(${PROJECT}
 )
 
 
-target_link_libraries(${PROJECT} PUBLIC ripple::serialization ripple::transport::multicast)
+target_link_libraries(${PROJECT} PUBLIC 
+    ripple::util::cert
+    ripple::logger
+    ripple::serialization
+    ripple::transport::multicast
+)
 
 install(TARGETS ${PROJECT} DESTINATION lib)

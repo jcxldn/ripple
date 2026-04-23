@@ -1,4 +1,5 @@
 
+#include "ripple/discovery/node.hpp"
 #include "ripple/transport/multicast/mcast.hpp"
 #include "ripple/transport/packet/packet.hpp"
 
@@ -6,6 +7,7 @@
 
 #include "ripple/discovery/disco_packet.hpp"
 int main(int argc, char **argv) {
+  /*
   ripple::transport::multicast::MulticastOptions mcast_opt;
   ripple::transport::multicast::MulticastTransport mcast_tp(mcast_opt);
 
@@ -23,5 +25,7 @@ int main(int argc, char **argv) {
   for (auto &pkt_entry : msg->pkts) {
     ripple::transport::packet::Packet p = pkt_entry.second;
     mcast_tp.transmit(p.serialize());
-  }
+  }*/
+
+  ripple::discovery::Node node;
 };

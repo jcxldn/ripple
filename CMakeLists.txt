@@ -24,6 +24,7 @@ include(lib/spdlog.cmake)
 add_subdirectory(ripple/logger)
 add_subdirectory(ripple/serialization)
 add_subdirectory(ripple/util/prng)
+add_subdirectory(ripple/util/cert)
 add_subdirectory(ripple/transport/packet)
 add_subdirectory(ripple/transport/multicast)
 
