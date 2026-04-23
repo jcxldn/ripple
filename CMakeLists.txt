@@ -20,6 +20,7 @@ include(FetchContent)
 include(lib/boost.cmake)
 include(lib/cereal.cmake)
 include(lib/spdlog.cmake)
+include(lib/msquic.cmake)
 
 add_subdirectory(ripple/logger)
 add_subdirectory(ripple/serialization)
