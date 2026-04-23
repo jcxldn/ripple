@@ -8,10 +8,16 @@ namespace ripple::discovery {
 struct DiscoPacket {
   std::string protocol = "ripple";
 
-  int port;         // quic listening port
+  int port; // quic listening port
+
+  std::string name;
   std::string hash; // hash of pubkey for quic server
 
-  template <class Archive> void serialize(Archive &ar) { ar(protocol); }
+  long millis; // millis since program start
+
+  template <class Archive> void serialize(Archive &ar) {
+    ar(protocol, port, name, hash, millis);
+  }
 };
 
 } // namespace ripple::discovery

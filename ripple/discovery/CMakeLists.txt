@@ -12,6 +12,7 @@ add_executable(ripple::discovery ALIAS ${PROJECT})
 
 target_sources(${PROJECT}
     PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
         ${CMAKE_CURRENT_LIST_DIR}/src/discovery.cpp
         ${CMAKE_CURRENT_LIST_DIR}/src/node.cpp
 )

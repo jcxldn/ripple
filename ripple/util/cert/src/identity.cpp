@@ -14,6 +14,9 @@ namespace ripple::util::cert {
 Identity::Identity(const std::string &cn, const std::string &san,
                    int validity_days) {
 
+  this->cn = cn;
+  this->san = san;
+
   // Create an ed25519 key
   key_ptr key = ed25519::generate_key();
 
