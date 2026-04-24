@@ -1,11 +1,22 @@
 
 #include "ripple/discovery/node.hpp"
+
+std::atomic<bool> keep_running(true);
+
+void signal_handler(int signal) {
+  if (signal == SIGINT) {
+    keep_running = false;
+  }
+}
+
 int main(int argc, char **argv) {
   // start
   ripple::discovery::Node *node = new ripple::discovery::Node();
 
-  // wait 5s
-  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+  // wait for ctrl c
+  std::signal(SIGINT, signal_handler);
+  while (keep_running) {
+  };
 
   // stop
   delete node;
