@@ -6,6 +6,7 @@
 #include "ripple/serialization/cereal.hpp"
 
 #include "ripple/discovery/disco_packet.hpp"
+#include "ripple/transport/packet/endpoint.hpp"
 #include "ripple/transport/packet/packet.hpp"
 #include <functional>
 #include <memory>
@@ -97,20 +98,26 @@ void DiscoveryNode::net_callback(
   // check to ensure this packet wasn't from us (diff hash)
   if (identity->spki_b64().compare(pkt->hash) != 0) {
 
+    // construct an updated endpoint object using the source ip and msg port
+    transport::packet::Endpoint quic_endpoint{};
+    quic_endpoint.address = std::move(msg->source.address);
+    quic_endpoint.port = pkt->port;
+
     // check to see if this peer is already known to us
     if (!manager->is_hash_known(pkt->hash)) {
       // new peer!
-      logger->warn("Found new peer: {}, {}", pkt->name, pkt->hash);
+      logger->warn("Found new peer: {}, {} at {}", pkt->name, pkt->hash,
+                   quic_endpoint.to_string());
 
       // construct a new peer object
       auto peer = std::make_shared<Peer>();
-      update_peer_from_disco(peer, pkt);
+      update_peer_from_disco(peer, pkt, quic_endpoint);
 
       manager->add_peer(peer);
     } else {
       // known peer, update
       auto peer = manager->get_peer_by_hash(pkt->hash);
-      update_peer_from_disco(peer, pkt);
+      update_peer_from_disco(peer, pkt, quic_endpoint);
     }
   }
 
@@ -118,7 +125,8 @@ void DiscoveryNode::net_callback(
 };
 
 void DiscoveryNode::update_peer_from_disco(
-    peer_ptr peer, std::shared_ptr<ripple::discovery::DiscoPacket> pkt) {
+    peer_ptr peer, std::shared_ptr<ripple::discovery::DiscoPacket> pkt,
+    transport::packet::Endpoint endpoint) {
   // update name if required
   if (peer->name.compare(pkt->name) != 0) {
     peer->name = pkt->name;
@@ -128,10 +136,15 @@ void DiscoveryNode::update_peer_from_disco(
     peer->hash = pkt->hash;
   }
 
-  // update endpoints (skip)
+  // update endpoints
+  // TODO: per interface monitoring (eg if one iface goes down it will not be
+  // removed from known list!)
+  if (!peer->is_endpoint_known(endpoint)) {
+    peer->endpoints.push_back(endpoint);
+  }
 
   // update last epoch
-  // todo check if old was higher? edge case possibly
+  // TODO: check if old was higher? edge case possibly
   peer->last_remote_epoch = pkt->millis;
 };
 

@@ -6,6 +6,7 @@
 #include "ripple/logger/logger.hpp"
 #include "ripple/transport/multicast/mcast.hpp"
 #include "ripple/transport/packet/controller.hpp"
+#include "ripple/transport/packet/endpoint.hpp"
 #include "ripple/util/cert/identity.hpp"
 #include <memory>
 
@@ -41,7 +42,8 @@ private:
 
   void
   update_peer_from_disco(peer_ptr peer,
-                         std::shared_ptr<ripple::discovery::DiscoPacket> pkt);
+                         std::shared_ptr<ripple::discovery::DiscoPacket> pkt,
+                         transport::packet::Endpoint endpoint);
 
 public:
   DiscoveryNode(

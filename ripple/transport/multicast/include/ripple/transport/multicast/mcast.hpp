@@ -10,7 +10,7 @@
 #include "ripple/logger/logger.hpp"
 #include "ripple/transport/multicast/address.hpp"
 #include "ripple/transport/multicast/tx_pair.hpp"
-#include "ripple/transport/packet/packet.hpp"
+#include "ripple/transport/packet/remote_packet.hpp"
 
 namespace ripple::transport::multicast {
 
@@ -68,7 +68,7 @@ public:
 
   boost::signals2::signal<void(const std::shared_ptr<std::vector<uint8_t>>)>
       tx_signal;
-  boost::signals2::signal<void(const packet::Packet)> rx_signal;
+  boost::signals2::signal<void(const packet::RemotePacket)> rx_signal;
 
   void transmit(std::shared_ptr<std::vector<uint8_t>> msg);
 

@@ -1,5 +1,6 @@
 #include "ripple/transport/multicast/mcast.hpp"
 #include "ripple/logger/logger.hpp"
+#include "ripple/transport/packet/endpoint.hpp"
 #include <memory>
 
 namespace ripple::transport::multicast {
@@ -137,10 +138,16 @@ void MulticastTransport::rx_setup() {
                 } else {
                   boost::asio::const_buffer buf(data->data(), length);
 
-                  packet::Packet p = packet::Packet::deserialize(buf);
+                  packet::RemotePacket rp;
 
-                  if (p.data->size() > 0 && p.header.magic == packet::MAGIC) {
-                    rx_signal(p);
+                  rp.packet = packet::Packet::deserialize(buf);
+
+                  if (rp.packet.data->size() > 0 &&
+                      rp.packet.header.magic == packet::MAGIC) {
+                    rp.endpoint.address = sender_endpoint->address();
+                    rp.endpoint.port = sender_endpoint->port();
+
+                    rx_signal(rp);
                   }
                 }
               }

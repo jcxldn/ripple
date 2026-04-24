@@ -1,6 +1,7 @@
 #ifndef PACKET_PACKET_HPP_
 #define PACKET_PACKET_HPP_
 
+#include "ripple/transport/packet/endpoint.hpp"
 #include <array>
 #include <boost/asio.hpp>
 #include <cstdint>
@@ -52,6 +53,8 @@ public:
   uint32_t max_chunks;
 
   std::shared_ptr<boost::asio::steady_timer> expire_timer;
+
+  Endpoint source;
 
   std::mutex m;
 
