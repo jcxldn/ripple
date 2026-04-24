@@ -23,6 +23,8 @@ public:
 
   std::string spki_b64();
 
+  std::vector<uint8_t> pkcs12_blob();
+
   inline std::string get_cn() { return cn; };
   inline std::string get_san() { return san; };
 };

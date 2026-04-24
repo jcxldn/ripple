@@ -28,6 +28,7 @@ target_link_libraries(${PROJECT} PUBLIC
     ripple::logger
     ripple::serialization
     ripple::transport::multicast
+    ripple::transport::quic
 )
 
 install(TARGETS ${PROJECT} DESTINATION lib)

@@ -9,7 +9,8 @@ project(
     LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 17) # boost
+set(CMAKE_CXX_STANDARD 17) # msquic, boost
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_BUILD_TYPE Release CACHE STRING "build type" FORCE) 
 
@@ -28,5 +29,6 @@ add_subdirectory(ripple/util/prng)
 add_subdirectory(ripple/util/cert)
 add_subdirectory(ripple/transport/packet)
 add_subdirectory(ripple/transport/multicast)
+add_subdirectory(ripple/transport/quic)
 
 add_subdirectory(ripple/discovery)

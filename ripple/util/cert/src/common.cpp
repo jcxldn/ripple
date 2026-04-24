@@ -51,6 +51,23 @@ std::string key_to_pem(key_ptr &key) {
   return serialize_bio(bio);
 };
 
+key_ptr key_from_pem(const std::string &pem) {
+
+  bio_ptr bio(BIO_new_mem_buf(pem.data(), pem.size()));
+  EVP_PKEY *raw = PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr);
+  if (!raw)
+    throw std::runtime_error("PEM_read_bio_PrivateKey failed");
+  return key_ptr(raw);
+};
+
+cert_ptr cert_from_pem(const std::string &pem) {
+  bio_ptr bio(BIO_new_mem_buf(pem.data(), pem.size()));
+  X509 *raw = PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr);
+  if (!raw)
+    throw std::runtime_error("PEM_read_bio_X509 failed");
+  return cert_ptr(raw);
+};
+
 std::vector<uint8_t> hash_cert_spki(cert_ptr &cert) {
   unsigned char *der = nullptr;
   int len = i2d_X509_PUBKEY(X509_get_X509_PUBKEY(cert.get()), &der);

@@ -4,6 +4,7 @@
 #include "ripple/discovery/discovery.hpp"
 #include "ripple/logger/logger.hpp"
 #include "ripple/transport/multicast/mcast.hpp"
+#include "ripple/transport/quic/quic.hpp"
 #include "ripple/util/cert/identity.hpp"
 
 namespace ripple::discovery {
@@ -15,6 +16,7 @@ private:
   util::cert::id_ptr id;
 
   std::shared_ptr<transport::multicast::MulticastTransport> mcast;
+  std::shared_ptr<ripple::transport::quic::QuicTransport> quic;
 
   // child nodes share the same io context
   // transports have their own context
