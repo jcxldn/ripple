@@ -5,7 +5,8 @@ namespace ripple::transport::multicast {
 TransmitPair::TransmitPair(std::shared_ptr<boost::asio::io_context> io_context,
                            boost::asio::ip::address mcast_ip,
                            boost::asio::ip::address ip, int port) {
-  logger = logger::LoggerProvider::get_logger("flight::net::TransmitPair");
+  logger = logger::LoggerProvider::get_logger(
+      "ripple::transport::multicast::TransmitPair");
 
   endpoint = std::make_shared<boost::asio::ip::udp::endpoint>(mcast_ip, port);
   socket = std::make_shared<boost::asio::ip::udp::socket>(*io_context.get(),
