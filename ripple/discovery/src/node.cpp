@@ -1,5 +1,6 @@
 #include "ripple/discovery/node.hpp"
 #include "ripple/discovery/discovery.hpp"
+#include "ripple/discovery/peer_manager.hpp"
 #include "ripple/transport/multicast/mcast.hpp"
 #include "ripple/util/cert/identity.hpp"
 #include <memory>
@@ -9,6 +10,9 @@ namespace ripple::discovery {
 Node::Node() {
 
   logger = logger::LoggerProvider::get_logger("ripple::discovery::Node");
+
+  // create a peer mgr instance
+  peer_manager = std::make_shared<PeerManager>();
 
   // Generate an identity (cert / key self signed pair)
   id = std::make_shared<util::cert::Identity>();
@@ -30,9 +34,17 @@ Node::Node() {
   mcast =
       std::make_shared<transport::multicast::MulticastTransport>(mcast_options);
 
+  // and a controller to resassemble mcast packets into messages
+  mcast_controller =
+      std::make_shared<ripple::transport::packet::PacketController>(
+          mcast->get_io_context());
+
+  // conect mcast to the controller
+  mcast_controller->connect(mcast->rx_signal);
+
   // Create a discovery node
-  discovery =
-      std::make_shared<DiscoveryNode>(quic->get_port(), id, io_context, mcast);
+  discovery = std::make_shared<DiscoveryNode>(
+      quic->get_port(), id, io_context, mcast, mcast_controller, peer_manager);
 
   context_thread = std::make_shared<std::thread>(&Node::thread_loop, this);
 };

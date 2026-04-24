@@ -2,8 +2,10 @@
 #define DISCOVERY_NODE_HPP_
 
 #include "ripple/discovery/discovery.hpp"
+#include "ripple/discovery/peer_manager.hpp"
 #include "ripple/logger/logger.hpp"
 #include "ripple/transport/multicast/mcast.hpp"
+#include "ripple/transport/packet/controller.hpp"
 #include "ripple/transport/quic/quic.hpp"
 #include "ripple/util/cert/identity.hpp"
 
@@ -16,6 +18,7 @@ private:
   util::cert::id_ptr id;
 
   std::shared_ptr<transport::multicast::MulticastTransport> mcast;
+  std::shared_ptr<ripple::transport::packet::PacketController> mcast_controller;
   std::shared_ptr<ripple::transport::quic::QuicTransport> quic;
 
   // child nodes share the same io context
@@ -25,6 +28,8 @@ private:
   void thread_loop();
 
   std::shared_ptr<DiscoveryNode> discovery;
+
+  std::shared_ptr<PeerManager> peer_manager;
 
 public:
   Node();

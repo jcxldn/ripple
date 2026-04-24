@@ -11,6 +11,7 @@ add_library(ripple::transport::packet ALIAS ${PROJECT})
 
 target_sources(${PROJECT}
     PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}/src/controller.cpp
         ${CMAKE_CURRENT_LIST_DIR}/src/packet.cpp
 )
 
@@ -19,6 +20,6 @@ target_include_directories(${PROJECT}
         ${CMAKE_CURRENT_LIST_DIR}/include/
 )
 
-target_link_libraries(${PROJECT} PUBLIC ripple::util::prng Boost::asio)
+target_link_libraries(${PROJECT} PUBLIC ripple::logger ripple::util::prng Boost::asio Boost::signals2)
 
 install(TARGETS ${PROJECT} DESTINATION lib)

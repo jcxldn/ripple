@@ -15,6 +15,7 @@ target_sources(${PROJECT}
         ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
         ${CMAKE_CURRENT_LIST_DIR}/src/discovery.cpp
         ${CMAKE_CURRENT_LIST_DIR}/src/node.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/src/peer_manager.cpp
 )
 
 target_include_directories(${PROJECT}

@@ -18,7 +18,7 @@ struct MulticastOptions {
   int ttl = 255;
   int port = 46785;
   std::string address = "224.0.0.176";
-  bool enable_loopback = false;
+  bool enable_loopback = true;
   cidr_v4 listen_interface;
 };
 
