@@ -57,6 +57,9 @@ private:
 public:
   boost::signals2::signal<void(const ReceivedMessage &)> rx_signal;
 
+  boost::signals2::signal<void(const transport::packet::Endpoint &)>
+      endpoint_added;
+
   void register_sender(TransportKind kind, Sender sender);
 
   void ingest_receive(TransportKind kind, ReceiveKind receive_kind,

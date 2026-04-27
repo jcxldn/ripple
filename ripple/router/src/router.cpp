@@ -30,6 +30,8 @@ void Router::upsert_peer(const std::string &hash, const std::string &name,
     record.hash = hash;
     record.name = name;
     record.endpoints.push_back(endpoint);
+    // emit an event so quic (if connection added) can connect to this endpoint
+    endpoint_added(endpoint);
     peers.emplace(hash, std::move(record));
     return;
   }
@@ -50,6 +52,8 @@ void Router::upsert_peer(const std::string &hash, const std::string &name,
 
   if (endpoint_it == record.endpoints.end()) {
     record.endpoints.push_back(endpoint);
+    // emit an event so quic (if connection added) can connect to this endpoint
+    endpoint_added(endpoint);
   }
 }
 

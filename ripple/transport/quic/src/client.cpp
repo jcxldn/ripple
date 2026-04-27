@@ -126,7 +126,7 @@ QUIC_CREDENTIAL_CONFIG QuicClient::init_create_cred_config() {
   return cred;
 };
 
-bool QuicClient::add_endpoint(packet::Endpoint &endpoint) {
+bool QuicClient::add_endpoint(const packet::Endpoint &endpoint) {
   reap_closed_connections();
 
   if (!initialized || !registration || !configuration) {

@@ -104,7 +104,7 @@ public:
              std::shared_ptr<MsQuicApi> api);
   ~QuicClient();
 
-  bool add_endpoint(packet::Endpoint &endpoint);
+  bool add_endpoint(const packet::Endpoint &endpoint);
 
   // Send a QUIC datagram (unreliable, must fit in one packet) to an endpoint.
   bool send_datagram(const packet::Endpoint &endpoint,

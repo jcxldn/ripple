@@ -1,4 +1,4 @@
-set(PROJECT ripple_peer)
+set(PROJECT ripple_router)
 
 project(
     ${PROJECT}
@@ -7,13 +7,11 @@ project(
 )
 
 add_library(${PROJECT})
-add_library(ripple::peer ALIAS ${PROJECT})
+add_library(ripple::router ALIAS ${PROJECT})
 
 target_sources(${PROJECT}
     PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/src/discovery.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/peer.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/src/quic.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/src/router.cpp
 )
 
 target_include_directories(${PROJECT}
@@ -23,10 +21,7 @@ target_include_directories(${PROJECT}
 
 target_link_libraries(${PROJECT}
     PUBLIC
-        ripple::router
-        ripple::discovery
-    ripple::transport::multicast
-    ripple::transport::quic
+        ripple::transport::packet
 )
 
 install(TARGETS ${PROJECT} DESTINATION lib)
