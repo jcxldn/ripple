@@ -19,7 +19,7 @@ TransmitPair::TransmitPair(std::shared_ptr<boost::asio::io_context> io_context,
 };
 
 TransmitPair::~TransmitPair() {
-  logger->info("Cleaning up for address {}", endpoint->address().to_string());
+  logger->trace("Cleaning up for address {}", endpoint->address().to_string());
 
   if (socket && socket->is_open())
     socket->close();
@@ -31,7 +31,7 @@ TransmitPair::~TransmitPair() {
 size_t TransmitPair::send(boost::asio::mutable_buffer &buf) {
   size_t sent_bytes = socket->send_to(buf, (*endpoint.get()));
 
-  logger->debug("Sent {} bytes on interface IP {}", sent_bytes,
+  logger->trace("Sent {} bytes on interface IP {}", sent_bytes,
                 endpoint->address().to_string());
 
   return sent_bytes;

@@ -53,7 +53,7 @@ void PacketController::packet_receive_handler(const RemotePacket rp) {
 
     if (msg->payload.size() > 0) {
       // message avail.
-      logger->debug("Received complete message id '{}' with total size '{}'",
+      logger->trace("Received complete message id '{}' with total size '{}'",
                     pkt.header.msg_id, msg->payload.size());
 
       msg->expire_timer->cancel();

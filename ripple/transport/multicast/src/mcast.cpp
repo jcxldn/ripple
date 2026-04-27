@@ -54,12 +54,12 @@ void MulticastTransport::tx_setup() {
   // setup sockets
   for (auto &local_addr : local_addresses) {
     if (local_addr.is_loopback() && !opt.enable_loopback) {
-      logger->debug("Skipping loopback IP '{}'", local_addr.to_string());
+      logger->trace("Skipping loopback IP '{}'", local_addr.to_string());
       continue;
     }
 
-    logger->info("Creating socket on interface with address {}",
-                 local_addr.to_string());
+    logger->trace("Creating socket on interface with address {}",
+                  local_addr.to_string());
 
     std::shared_ptr<TransmitPair> pair = std::make_shared<TransmitPair>(
         io_context, mcast_ip, local_addr, opt.port);
@@ -103,12 +103,12 @@ void MulticastTransport::rx_setup() {
 
   for (auto &local_addr : local_addresses) {
     if (local_addr.is_loopback() && !opt.enable_loopback) {
-      logger->debug("Skipping loopback IP '{}'", local_addr.to_string());
+      logger->trace("Skipping loopback IP '{}'", local_addr.to_string());
       continue;
     }
 
-    logger->info("Setting up multicast RX on interface with address {}",
-                 local_addr.to_string());
+    logger->trace("Setting up multicast RX on interface with address {}",
+                  local_addr.to_string());
     rx_socket->set_option(boost::asio::ip::multicast::join_group(
         mcast_addr.to_v4(), local_addr.to_v4()));
   }

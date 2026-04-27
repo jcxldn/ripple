@@ -1,5 +1,7 @@
 
 #include "ripple/discovery/node.hpp"
+#include "ripple/logger/logger.hpp"
+#include "spdlog/common.h"
 
 std::atomic<bool> keep_running(true);
 
@@ -10,6 +12,9 @@ void signal_handler(int signal) {
 }
 
 int main(int argc, char **argv) {
+
+  ripple::logger::LoggerProvider::set_level(spdlog::level::level_enum::debug);
+
   // start
   ripple::discovery::Node *node = new ripple::discovery::Node();
 

@@ -52,7 +52,7 @@ std::shared_ptr<SerializedData> serialize(std::shared_ptr<T> value) {
   data->buf = boost::asio::buffer(data->data);
 
   logger::LoggerProvider::get_logger("ripple::serialization::cereal")
-      ->debug("Serialized {} bytes", data->buf.size());
+      ->trace("Serialized {} bytes", data->buf.size());
 
   return data;
 };
