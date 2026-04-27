@@ -126,20 +126,28 @@ uint16_t QuicTransport::get_port() {
 QUIC_STATUS QUIC_API QuicTransport::quic_conn_callback(
     MsQuicConnection *conn, void *ctx, QUIC_CONNECTION_EVENT *ev) {
   auto *qt = static_cast<QuicTransport *>(ctx);
-  switch (ev->Type) {
-  case QUIC_CONNECTION_EVENT_CONNECTED: {
+
+  // Track from the very first event so connections that abort during the
+  // handshake (before CONNECTED) are still visible to the drain wait in the
+  // destructor. The unordered_set insertion is idempotent on repeat events.
+  if (ev->Type != QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE) {
     std::lock_guard<std::mutex> guard(qt->active_connections_mutex);
     qt->active_connections.insert(conn);
+  }
+
+  switch (ev->Type) {
+  case QUIC_CONNECTION_EVENT_CONNECTED:
     if (!qt->shutting_down) {
       qt->logger->info("[conn {}]: connected", static_cast<void *>(conn));
     }
-  } break;
-  case QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE: {
-    std::lock_guard<std::mutex> guard(qt->active_connections_mutex);
-    qt->active_connections.erase(conn);
-  }
-    qt->active_connections_drained.notify_all();
     break;
+  case QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE: {
+    {
+      std::lock_guard<std::mutex> guard(qt->active_connections_mutex);
+      qt->active_connections.erase(conn);
+    }
+    qt->active_connections_drained.notify_all();
+  } break;
   default:
     break;
   }
