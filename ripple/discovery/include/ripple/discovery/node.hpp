@@ -6,6 +6,7 @@
 #include "ripple/logger/logger.hpp"
 #include "ripple/transport/multicast/mcast.hpp"
 #include "ripple/transport/packet/controller.hpp"
+#include "ripple/transport/quic/client.hpp"
 #include "ripple/transport/quic/quic.hpp"
 #include "ripple/util/cert/identity.hpp"
 
@@ -20,6 +21,7 @@ private:
   std::shared_ptr<transport::multicast::MulticastTransport> mcast;
   std::shared_ptr<ripple::transport::packet::PacketController> mcast_controller;
   std::shared_ptr<ripple::transport::quic::QuicTransport> quic;
+  std::shared_ptr<ripple::transport::quic::QuicClient> quic_client;
 
   // child nodes share the same io context
   // transports have their own context
@@ -30,6 +32,8 @@ private:
   std::shared_ptr<DiscoveryNode> discovery;
 
   std::shared_ptr<PeerManager> peer_manager;
+
+  void peer_added_handler(const peer_ptr peer);
 
 public:
   Node();

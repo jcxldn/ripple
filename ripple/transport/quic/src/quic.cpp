@@ -32,7 +32,7 @@ QuicTransport::~QuicTransport() {
 }
 
 bool QuicTransport::protocol_init() {
-  api = std::make_unique<MsQuicApi>();
+  api = std::make_shared<MsQuicApi>();
   if (QUIC_FAILED(api->GetInitStatus())) {
     logger->critical("MsQuicApi init failed!");
     return false;

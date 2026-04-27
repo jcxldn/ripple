@@ -25,5 +25,7 @@ void PeerManager::add_peer(peer_ptr peer) {
   // TODO: check if already exists
 
   peers.push_back(peer);
+
+  peer_added_ev(peer);
 }
 } // namespace ripple::discovery

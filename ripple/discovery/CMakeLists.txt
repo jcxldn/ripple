@@ -30,6 +30,7 @@ target_link_libraries(${PROJECT} PUBLIC
     ripple::serialization
     ripple::transport::multicast
     ripple::transport::quic
+    Boost::signals2
 )
 
 install(TARGETS ${PROJECT} DESTINATION lib)

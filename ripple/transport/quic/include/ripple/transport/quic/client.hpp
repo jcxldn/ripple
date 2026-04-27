@@ -1,0 +1,83 @@
+#ifndef QUIC_CLIENT_HPP_
+#define QUIC_CLIENT_HPP_
+
+#include "ripple/transport/packet/endpoint.hpp"
+#include "ripple/transport/quic/options.hpp"
+#include <condition_variable>
+#include <memory>
+#include <mutex>
+#include <vector>
+
+#define QUIC_API_ENABLE_PREVIEW_FEATURES 1
+#include <msquic.hpp>
+
+#include "ripple/logger/logger.hpp"
+#include "ripple/util/cert/identity.hpp"
+
+namespace ripple::transport::quic {
+
+struct QuicPeer {
+  packet::Endpoint endpoint;
+  std::vector<uint8_t> expected_spki_hash;
+
+  std::condition_variable connection_state_change;
+  std::mutex connection_state_mutex;
+
+  bool connected = false;
+  bool shutdown = false;
+
+  // unused?
+  QUIC_STATUS shutdown_status = QUIC_STATUS_SUCCESS;
+};
+
+class QuicClient {
+
+private:
+  struct ClientCallbackContext {
+    QuicClient *client;
+    QuicPeer peer;
+  };
+
+  struct ActiveConnection {
+    ClientCallbackContext context{};
+    std::unique_ptr<MsQuicConnection> connection;
+  };
+
+  std::shared_ptr<logger::logger> logger;
+
+  util::cert::id_ptr identity;
+
+  std::shared_ptr<MsQuicApi> api;
+  QuicOptions opt;
+
+  QuicAddr addr;
+
+  // Keep PKCS#12 backing memory alive for as long as MsQuic may read it.
+  std::vector<uint8_t> identity_pkcs12_blob;
+  QUIC_CERTIFICATE_PKCS12 identity_pkcs12{};
+
+  std::mutex active_connections_mutex;
+  std::vector<std::unique_ptr<ActiveConnection>> active_connections;
+
+  std::unique_ptr<MsQuicRegistration> registration;
+  std::unique_ptr<MsQuicConfiguration> configuration;
+  bool initialized = false;
+
+  bool protocol_init();
+  QUIC_CREDENTIAL_CONFIG init_create_cred_config();
+
+  // #region MsQuic callbacks
+  static QUIC_STATUS QUIC_API quic_conn_callback(MsQuicConnection *conn,
+                                                 void *ctx_ptr,
+                                                 QUIC_CONNECTION_EVENT *ev);
+
+public:
+  QuicClient(QuicOptions &opt, util::cert::id_ptr identity,
+             std::shared_ptr<MsQuicApi> api);
+  ~QuicClient();
+
+  bool add_endpoint(packet::Endpoint &endpoint);
+};
+} // namespace ripple::transport::quic
+
+#endif /* QUIC_CLIENT_HPP_*/

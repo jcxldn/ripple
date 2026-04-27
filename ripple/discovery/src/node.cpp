@@ -2,6 +2,7 @@
 #include "ripple/discovery/discovery.hpp"
 #include "ripple/discovery/peer_manager.hpp"
 #include "ripple/transport/multicast/mcast.hpp"
+#include "ripple/transport/quic/client.hpp"
 #include "ripple/util/cert/identity.hpp"
 #include <memory>
 
@@ -26,6 +27,10 @@ Node::Node() {
   transport::quic::QuicOptions quic_options;
   quic = std::make_shared<transport::quic::QuicTransport>(quic_options, id);
 
+  // create quic client
+  quic_client = std::make_shared<transport::quic::QuicClient>(quic_options, id,
+                                                              quic->get_api());
+
   // Create a multicast transport to send discovery ("disco") packets over
 
   // use default options
@@ -47,6 +52,10 @@ Node::Node() {
       quic->get_port(), id, io_context, mcast, mcast_controller, peer_manager);
 
   context_thread = std::make_shared<std::thread>(&Node::thread_loop, this);
+
+  // connect to sig for new node
+  peer_manager->peer_added_ev.connect(
+      boost::bind(&Node::peer_added_handler, this, std::placeholders::_1));
 };
 
 Node::~Node() {
@@ -58,5 +67,12 @@ Node::~Node() {
 };
 
 void Node::thread_loop() { io_context->run(); };
+
+void Node::peer_added_handler(const peer_ptr peer) {
+  logger->info("Handling new peer {}", peer->endpoints.at(0).to_string());
+
+  // add a client
+  quic_client->add_endpoint(peer->endpoints.at(0));
+};
 
 } // namespace ripple::discovery

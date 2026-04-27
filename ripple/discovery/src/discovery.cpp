@@ -90,7 +90,7 @@ void DiscoveryNode::disco_timer_act() {
 
 void DiscoveryNode::net_callback(
     const std::shared_ptr<transport::packet::Message> msg) {
-  msg->m.lock();
+  std::lock_guard<std::mutex> guard(msg->m);
 
   // assume message is of type Disco
   auto pkt = serialization::deserialize<DiscoPacket>(msg->payload);
@@ -120,8 +120,6 @@ void DiscoveryNode::net_callback(
       update_peer_from_disco(peer, pkt, quic_endpoint);
     }
   }
-
-  msg->m.unlock();
 };
 
 void DiscoveryNode::update_peer_from_disco(

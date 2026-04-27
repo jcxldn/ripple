@@ -1,6 +1,7 @@
 #ifndef QUIC_QUIC_HPP_
 #define QUIC_QUIC_HPP_
 
+#include "ripple/transport/quic/options.hpp"
 #define QUIC_API_ENABLE_PREVIEW_FEATURES 1
 #include <msquic.hpp>
 
@@ -8,15 +9,6 @@
 #include "ripple/util/cert/identity.hpp"
 
 namespace ripple::transport::quic {
-
-struct QuicOptions {
-  std::string protocol_name = "ripple-quic";
-  std::string alpn = "ripple";
-  uint64_t idle_timeout_ms = 5000;
-  uint32_t keep_alive_ms = 1000;
-  uint16_t peer_stream_bidirectional_count = 100;
-  uint16_t peer_stream_unidirectional_count = 100;
-};
 
 class QuicTransport {
 
@@ -30,7 +22,7 @@ private:
 
   util::cert::id_ptr identity;
 
-  std::unique_ptr<MsQuicApi> api;
+  std::shared_ptr<MsQuicApi> api;
   QuicOptions opt;
 
   QuicAddr addr;
@@ -56,6 +48,8 @@ public:
   ~QuicTransport();
 
   uint16_t get_port();
+
+  inline std::shared_ptr<MsQuicApi> get_api() { return api; };
 };
 } // namespace ripple::transport::quic
 
