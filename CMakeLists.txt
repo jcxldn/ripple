@@ -31,5 +31,6 @@ add_subdirectory(ripple/util/cert)
 add_subdirectory(ripple/transport/packet)
 add_subdirectory(ripple/transport/multicast)
 add_subdirectory(ripple/transport/quic)
+add_subdirectory(ripple/peer)
 
 add_subdirectory(ripple/discovery)

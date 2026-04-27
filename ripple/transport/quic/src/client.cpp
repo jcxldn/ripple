@@ -33,6 +33,10 @@ QuicClient::QuicClient(QuicOptions &opt, util::cert::id_ptr identity,
 
 QuicClient::~QuicClient() {
   shutdown_active_connections();
+  {
+    std::lock_guard<std::mutex> guard(pending_datagrams_mutex);
+    pending_datagram_payloads.clear();
+  }
   initialized = false;
   configuration.reset();
   registration.reset();
@@ -177,6 +181,7 @@ QUIC_STATUS QUIC_API QuicClient::quic_conn_callback(MsQuicConnection *conn,
     }
 
     ctx->peer.connection_state_change.notify_all();
+    ctx->client->connection_state_ev(ctx->peer.endpoint, true);
     break;
   }
   case QUIC_CONNECTION_EVENT_PEER_CERTIFICATE_RECEIVED: {
@@ -213,6 +218,15 @@ QUIC_STATUS QUIC_API QuicClient::quic_conn_callback(MsQuicConnection *conn,
 
     break;
   }
+  case QUIC_CONNECTION_EVENT_DATAGRAM_SEND_STATE_CHANGED: {
+    void *send_ctx = ev->DATAGRAM_SEND_STATE_CHANGED.ClientContext;
+    if (send_ctx && QUIC_DATAGRAM_SEND_STATE_IS_FINAL(
+                        ev->DATAGRAM_SEND_STATE_CHANGED.State)) {
+      std::lock_guard<std::mutex> guard(ctx->client->pending_datagrams_mutex);
+      ctx->client->pending_datagram_payloads.erase(send_ctx);
+    }
+    break;
+  }
   case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT: {
 
     ctx->client->logger->info("[conn {}] transport shutdown {}",
@@ -231,6 +245,7 @@ QUIC_STATUS QUIC_API QuicClient::quic_conn_callback(MsQuicConnection *conn,
     std::lock_guard<std::mutex> lk(ctx->peer.connection_state_mutex);
     ctx->peer.shutdown = true;
     ctx->peer.connection_state_change.notify_all();
+    ctx->client->connection_state_ev(ctx->peer.endpoint, false);
     break;
   }
 
@@ -254,18 +269,47 @@ QuicClient::find_connection(const packet::Endpoint &endpoint) {
 
 bool QuicClient::send_datagram(const packet::Endpoint &endpoint,
                                const std::vector<uint8_t> &data) {
-  std::lock_guard<std::mutex> guard(active_connections_mutex);
-  auto *conn = find_connection(endpoint);
+  MsQuicConnection *conn = nullptr;
+  {
+    std::lock_guard<std::mutex> guard(active_connections_mutex);
+    conn = find_connection(endpoint);
+  }
+
   if (!conn) {
     logger->warn("send_datagram: no connected peer {}", endpoint.to_string());
     return false;
   }
 
-  QUIC_BUFFER buf{static_cast<uint32_t>(data.size()),
-                  const_cast<uint8_t *>(data.data())};
+  // MsQuic can complete datagram send asynchronously, so keep payload alive
+  // until DATAGRAM_SEND_STATE_CHANGED reaches a final state.
+  auto pending = std::make_unique<PendingDatagramSend>();
+  pending->payload = data;
+  pending->buffer.Buffer = pending->payload.data();
+  pending->buffer.Length = static_cast<uint32_t>(pending->payload.size());
+
+  void *send_ctx = pending.get();
+
+  {
+    std::lock_guard<std::mutex> guard(pending_datagrams_mutex);
+    pending_datagram_payloads[send_ctx] = std::move(pending);
+  }
+
+  QUIC_BUFFER *buf = nullptr;
+  {
+    std::lock_guard<std::mutex> guard(pending_datagrams_mutex);
+    auto it = pending_datagram_payloads.find(send_ctx);
+    if (it == pending_datagram_payloads.end()) {
+      logger->error("send_datagram: payload tracking failed");
+      return false;
+    }
+    buf = &it->second->buffer;
+  }
+
   QUIC_STATUS status =
-      MsQuic->DatagramSend(*conn, &buf, 1, QUIC_SEND_FLAG_NONE, nullptr);
+      MsQuic->DatagramSend(*conn, buf, 1, QUIC_SEND_FLAG_NONE, send_ctx);
   if (QUIC_FAILED(status)) {
+    std::lock_guard<std::mutex> guard(pending_datagrams_mutex);
+    pending_datagram_payloads.erase(send_ctx);
     logger->error("send_datagram: DatagramSend failed 0x{:x}", status);
     return false;
   }
@@ -274,46 +318,60 @@ bool QuicClient::send_datagram(const packet::Endpoint &endpoint,
 
 bool QuicClient::send_stream(const packet::Endpoint &endpoint,
                              const std::vector<uint8_t> &data) {
-  std::lock_guard<std::mutex> guard(active_connections_mutex);
-  auto *conn = find_connection(endpoint);
+  MsQuicConnection *conn = nullptr;
+  {
+    std::lock_guard<std::mutex> guard(active_connections_mutex);
+    conn = find_connection(endpoint);
+  }
+
   if (!conn) {
     logger->warn("send_stream: no connected peer {}", endpoint.to_string());
     return false;
   }
 
-  // Heap-allocate the buffer so it stays alive until SEND_COMPLETE.
-  auto *buf_copy = new std::vector<uint8_t>(data);
-  QUIC_BUFFER quic_buf{static_cast<uint32_t>(buf_copy->size()),
-                       buf_copy->data()};
+  auto *pending = new PendingStreamSend();
+  pending->payload = data;
+  pending->buffer.Buffer = pending->payload.data();
+  pending->buffer.Length = static_cast<uint32_t>(pending->payload.size());
 
   // CleanUpAutoDelete: MsQuic closes the stream handle after SHUTDOWN_COMPLETE.
   auto *stream = new MsQuicStream(
       *conn, QUIC_STREAM_OPEN_FLAG_UNIDIRECTIONAL, CleanUpAutoDelete,
       [](MsQuicStream *s, void *ctx, QUIC_STREAM_EVENT *ev) -> QUIC_STATUS {
-        if (ev->Type == QUIC_STREAM_EVENT_SEND_COMPLETE) {
-          delete static_cast<std::vector<uint8_t> *>(ctx);
+        auto *pending_send = static_cast<PendingStreamSend *>(ctx);
+        if (!pending_send) {
+          return QUIC_STATUS_SUCCESS;
         }
+
+        if (ev->Type == QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE) {
+          s->Context = nullptr;
+          delete pending_send;
+        }
+
         return QUIC_STATUS_SUCCESS;
       },
-      buf_copy);
+      pending);
 
   if (!stream->IsValid()) {
     logger->error("send_stream: StreamOpen failed");
-    delete buf_copy;
+    delete pending;
     delete stream;
     return false;
   }
 
   if (QUIC_FAILED(stream->Start(QUIC_STREAM_START_FLAG_IMMEDIATE))) {
     logger->error("send_stream: StreamStart failed");
-    delete buf_copy;
+    delete pending;
     delete stream;
     return false;
   }
 
-  QUIC_STATUS status = stream->Send(&quic_buf, 1, QUIC_SEND_FLAG_FIN, buf_copy);
+  QUIC_STATUS status =
+      stream->Send(&pending->buffer, 1, QUIC_SEND_FLAG_FIN, pending);
   if (QUIC_FAILED(status)) {
     logger->error("send_stream: StreamSend failed 0x{:x}", status);
+    delete pending;
+    stream->Context = nullptr;
     // Stream is already started; shut it down rather than double-delete.
     stream->ConnectionShutdown(1);
     return false;

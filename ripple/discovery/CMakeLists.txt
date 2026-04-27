@@ -30,6 +30,7 @@ target_include_directories(${DISCOVERY_LIB}
 
 
 target_link_libraries(${DISCOVERY_LIB} PUBLIC 
+    ripple::peer
     ripple::util::cert
     ripple::logger
     ripple::serialization

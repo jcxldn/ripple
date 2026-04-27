@@ -1,6 +1,7 @@
 
 #include "ripple/discovery/node.hpp"
 #include "ripple/logger/logger.hpp"
+#include "ripple/peer/router.hpp"
 #include "spdlog/common.h"
 
 std::atomic<bool> keep_running(true);
@@ -18,19 +19,14 @@ std::chrono::milliseconds interval = std::chrono::milliseconds(2500);
 
 void callback(ripple::discovery::Node *node) {
   auto l = ripple::logger::LoggerProvider::get_logger("main");
-  auto pm = node->get_peer_manager();
+  auto router = node->get_peer_router();
 
-  auto qc = node->get_quic_client();
-  pm->for_each_active([&l, &qc](const ripple::discovery::peer_ptr &peer) {
-    l->info("active peer: {}", peer->name);
+  std::string msg = "hello";
+  std::vector<uint8_t> bytes(msg.begin(), msg.end());
 
-    auto ep = peer->endpoints.at(0);
-
-    std::string msg = "hello";
-
-    std::vector<uint8_t> myVector(msg.begin(), msg.end());
-    qc->send_datagram(ep, myVector);
-  });
+  size_t sent =
+      router->send_to_all_active(bytes, ripple::peer::TransportKind::quic);
+  l->info("broadcast sent to {} peers via quic", sent);
 
   act_timer.expires_after(interval);
   act_timer.async_wait(std::bind(callback, node));

@@ -1,6 +1,7 @@
 #include "ripple/discovery/node.hpp"
 #include "ripple/discovery/discovery.hpp"
 #include "ripple/discovery/peer_manager.hpp"
+#include "ripple/peer/router.hpp"
 #include "ripple/transport/multicast/mcast.hpp"
 #include "ripple/transport/quic/client.hpp"
 #include "ripple/util/cert/identity.hpp"
@@ -14,6 +15,7 @@ Node::Node() {
 
   // create a peer mgr instance
   peer_manager = std::make_shared<PeerManager>();
+  peer_router = std::make_shared<ripple::peer::Router>();
 
   // Generate an identity (cert / key self signed pair)
   id = std::make_shared<util::cert::Identity>();
@@ -31,6 +33,16 @@ Node::Node() {
   quic_client = std::make_shared<transport::quic::QuicClient>(quic_options, id,
                                                               quic->get_api());
 
+  peer_router->register_sender(
+      ripple::peer::TransportKind::quic,
+      [client = quic_client](const ripple::peer::PeerRecord &peer,
+                             const std::vector<uint8_t> &payload) {
+        if (peer.endpoints.empty()) {
+          return false;
+        }
+        return client->send_datagram(peer.endpoints.front(), payload);
+      });
+
   // Create a multicast transport to send discovery ("disco") packets over
 
   // use default options
@@ -38,6 +50,15 @@ Node::Node() {
 
   mcast =
       std::make_shared<transport::multicast::MulticastTransport>(mcast_options);
+
+  peer_router->register_sender(
+      ripple::peer::TransportKind::multicast,
+      [transport = mcast](const ripple::peer::PeerRecord &,
+                          const std::vector<uint8_t> &payload) {
+        auto bytes = std::make_shared<std::vector<uint8_t>>(payload);
+        transport->transmit(bytes);
+        return true;
+      });
 
   // and a controller to resassemble mcast packets into messages
   mcast_controller =
@@ -56,10 +77,15 @@ Node::Node() {
   // connect to sig for new node
   peer_added_connection = peer_manager->peer_added_ev.connect(
       boost::bind(&Node::peer_added_handler, this, std::placeholders::_1));
+
+  quic_state_connection = quic_client->connection_state_ev.connect(
+      boost::bind(&Node::quic_connection_state_handler, this,
+                  std::placeholders::_1, std::placeholders::_2));
 };
 
 Node::~Node() {
   peer_added_connection.disconnect();
+  quic_state_connection.disconnect();
 
   io_context->stop();
 
@@ -73,9 +99,21 @@ void Node::thread_loop() { io_context->run(); };
 void Node::peer_added_handler(const peer_ptr peer) {
   logger->info("Handling new peer {}", peer->endpoints.at(0).to_string());
 
+  peer_router->upsert_peer(peer->hash, peer->name, peer->endpoints.at(0));
+
   // add a client
   quic_client->add_endpoint(peer->endpoints.at(0));
 };
+
+void Node::quic_connection_state_handler(
+    const transport::packet::Endpoint &endpoint, bool connected) {
+  if (connected) {
+    peer_router->mark_endpoint_active(endpoint);
+    return;
+  }
+
+  peer_router->mark_endpoint_inactive(endpoint);
+}
 
 size_t Node::known_peer_count() const { return peer_manager->count(); }
 

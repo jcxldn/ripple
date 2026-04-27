@@ -4,6 +4,7 @@
 #include "ripple/discovery/discovery.hpp"
 #include "ripple/discovery/peer_manager.hpp"
 #include "ripple/logger/logger.hpp"
+#include "ripple/peer/router.hpp"
 #include "ripple/transport/multicast/mcast.hpp"
 #include "ripple/transport/packet/controller.hpp"
 #include "ripple/transport/quic/client.hpp"
@@ -33,9 +34,14 @@ private:
   std::shared_ptr<DiscoveryNode> discovery;
 
   std::shared_ptr<PeerManager> peer_manager;
+  std::shared_ptr<ripple::peer::Router> peer_router;
   boost::signals2::scoped_connection peer_added_connection;
+  boost::signals2::scoped_connection quic_state_connection;
 
   void peer_added_handler(const peer_ptr peer);
+  void
+  quic_connection_state_handler(const transport::packet::Endpoint &endpoint,
+                                bool connected);
 
 public:
   Node();
@@ -46,6 +52,10 @@ public:
   inline std::shared_ptr<PeerManager> get_peer_manager() {
     return peer_manager;
   };
+
+  inline std::shared_ptr<ripple::peer::Router> get_peer_router() {
+    return peer_router;
+  }
 
   inline std::shared_ptr<ripple::transport::quic::QuicClient>
   get_quic_client() {

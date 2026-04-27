@@ -3,9 +3,11 @@
 
 #include "ripple/transport/packet/endpoint.hpp"
 #include "ripple/transport/quic/options.hpp"
+#include <boost/signals2.hpp>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 
 #include <msquic.hpp>
@@ -43,6 +45,16 @@ private:
     std::unique_ptr<MsQuicConnection> connection;
   };
 
+  struct PendingDatagramSend {
+    std::vector<uint8_t> payload;
+    QUIC_BUFFER buffer{};
+  };
+
+  struct PendingStreamSend {
+    std::vector<uint8_t> payload;
+    QUIC_BUFFER buffer{};
+  };
+
   std::shared_ptr<logger::logger> logger;
 
   util::cert::id_ptr identity;
@@ -58,6 +70,10 @@ private:
 
   std::mutex active_connections_mutex;
   std::vector<std::unique_ptr<ActiveConnection>> active_connections;
+
+  std::mutex pending_datagrams_mutex;
+  std::unordered_map<void *, std::unique_ptr<PendingDatagramSend>>
+      pending_datagram_payloads;
 
   std::unique_ptr<MsQuicRegistration> registration;
   std::unique_ptr<MsQuicConfiguration> configuration;
@@ -78,6 +94,9 @@ private:
                                                  QUIC_CONNECTION_EVENT *ev);
 
 public:
+  boost::signals2::signal<void(const packet::Endpoint &, bool)>
+      connection_state_ev;
+
   QuicClient(QuicOptions &opt, util::cert::id_ptr identity,
              std::shared_ptr<MsQuicApi> api);
   ~QuicClient();
