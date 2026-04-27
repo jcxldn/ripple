@@ -37,4 +37,10 @@ size_t PeerManager::count() const {
   std::lock_guard<std::mutex> guard(peers_mutex);
   return peers.size();
 }
+
+void PeerManager::for_each_active(
+    std::function<void(const peer_ptr)> callback) {
+  std::for_each(peers.begin(), peers.end(), callback);
+}
+
 } // namespace ripple::discovery

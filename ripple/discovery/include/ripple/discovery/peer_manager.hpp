@@ -20,6 +20,8 @@ public:
   size_t count() const;
 
   boost::signals2::signal<void(const peer_ptr peer)> peer_added_ev;
+
+  void for_each_active(std::function<void(const peer_ptr)> callback);
 };
 
 }; // namespace ripple::discovery

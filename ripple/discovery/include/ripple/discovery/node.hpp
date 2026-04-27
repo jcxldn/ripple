@@ -42,6 +42,15 @@ public:
   ~Node();
 
   size_t known_peer_count() const;
+
+  inline std::shared_ptr<PeerManager> get_peer_manager() {
+    return peer_manager;
+  };
+
+  inline std::shared_ptr<ripple::transport::quic::QuicClient>
+  get_quic_client() {
+    return quic_client;
+  }
 };
 
 } // namespace ripple::discovery
