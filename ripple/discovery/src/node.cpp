@@ -81,11 +81,49 @@ Node::Node() {
   quic_state_connection = quic_client->connection_state_ev.connect(
       boost::bind(&Node::quic_connection_state_handler, this,
                   std::placeholders::_1, std::placeholders::_2));
+
+  quic_receive_connection = quic_client->datagram_received_ev.connect(
+      [this](const transport::packet::Endpoint &endpoint,
+             const std::vector<uint8_t> &payload) {
+        peer_router->ingest_receive(ripple::peer::TransportKind::quic,
+                                    ripple::peer::ReceiveKind::datagram,
+                                    endpoint, payload);
+      });
+
+  quic_transport_receive_connection = quic->datagram_received_ev.connect(
+      [this](const transport::packet::Endpoint &endpoint,
+             const std::vector<uint8_t> &payload) {
+        peer_router->ingest_receive(ripple::peer::TransportKind::quic,
+                                    ripple::peer::ReceiveKind::datagram,
+                                    endpoint, payload);
+      });
+
+  quic_transport_stream_receive_connection = quic->stream_received_ev.connect(
+      [this](const transport::packet::Endpoint &endpoint,
+             const std::vector<uint8_t> &payload) {
+        peer_router->ingest_receive(ripple::peer::TransportKind::quic,
+                                    ripple::peer::ReceiveKind::stream, endpoint,
+                                    payload);
+      });
+
+  mcast_receive_connection = mcast->rx_signal.connect(
+      [this](const transport::packet::RemotePacket &packet) {
+        if (!packet.packet.data) {
+          return;
+        }
+        peer_router->ingest_receive(ripple::peer::TransportKind::multicast,
+                                    ripple::peer::ReceiveKind::packet,
+                                    packet.endpoint, *packet.packet.data);
+      });
 };
 
 Node::~Node() {
   peer_added_connection.disconnect();
   quic_state_connection.disconnect();
+  quic_receive_connection.disconnect();
+  quic_transport_receive_connection.disconnect();
+  quic_transport_stream_receive_connection.disconnect();
+  mcast_receive_connection.disconnect();
 
   io_context->stop();
 

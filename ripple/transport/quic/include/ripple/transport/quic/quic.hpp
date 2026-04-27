@@ -1,7 +1,9 @@
 #ifndef QUIC_QUIC_HPP_
 #define QUIC_QUIC_HPP_
 
+#include "ripple/transport/packet/endpoint.hpp"
 #include "ripple/transport/quic/options.hpp"
+#include <boost/signals2.hpp>
 #include <msquic.hpp>
 
 #include "ripple/logger/logger.hpp"
@@ -44,6 +46,11 @@ private:
   std::unordered_set<MsQuicConnection *> active_connections;
   bool shutting_down = false;
 
+  struct StreamCallbackContext {
+    QuicTransport *transport = nullptr;
+    transport::packet::Endpoint remote_endpoint{};
+  };
+
   bool protocol_init();
   QUIC_CREDENTIAL_CONFIG init_create_cred_config();
 
@@ -57,6 +64,13 @@ private:
                                                    QUIC_STREAM_EVENT *ev);
 
 public:
+  boost::signals2::signal<void(const transport::packet::Endpoint &,
+                               const std::vector<uint8_t> &)>
+      datagram_received_ev;
+  boost::signals2::signal<void(const transport::packet::Endpoint &,
+                               const std::vector<uint8_t> &)>
+      stream_received_ev;
+
   QuicTransport(QuicOptions &opt, util::cert::id_ptr identity);
   ~QuicTransport();
 

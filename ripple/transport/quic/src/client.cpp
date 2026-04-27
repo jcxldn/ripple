@@ -211,10 +211,18 @@ QUIC_STATUS QUIC_API QuicClient::quic_conn_callback(MsQuicConnection *conn,
   }
 
   case QUIC_CONNECTION_EVENT_DATAGRAM_RECEIVED: {
+    std::vector<uint8_t> payload;
+    if (ev->DATAGRAM_RECEIVED.Buffer && ev->DATAGRAM_RECEIVED.Buffer->Buffer &&
+        ev->DATAGRAM_RECEIVED.Buffer->Length > 0) {
+      const auto *begin = ev->DATAGRAM_RECEIVED.Buffer->Buffer;
+      payload.assign(begin, begin + ev->DATAGRAM_RECEIVED.Buffer->Length);
+    }
 
     ctx->client->logger->info("[conn {}] rx datagram of {} bytes",
                               ctx->peer.endpoint.to_string(),
                               ev->DATAGRAM_RECEIVED.Buffer->Length);
+
+    ctx->client->datagram_received_ev(ctx->peer.endpoint, payload);
 
     break;
   }

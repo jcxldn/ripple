@@ -3,6 +3,8 @@
 
 #include "ripple/transport/packet/endpoint.hpp"
 
+#include <boost/signals2.hpp>
+
 #include <cstddef>
 #include <functional>
 #include <mutex>
@@ -17,11 +19,24 @@ enum class TransportKind {
   multicast,
 };
 
+enum class ReceiveKind {
+  datagram,
+  stream,
+  packet,
+};
+
 struct PeerRecord {
   std::string hash;
   std::string name;
   std::vector<transport::packet::Endpoint> endpoints;
   bool active = true;
+};
+
+struct ReceivedMessage {
+  TransportKind transport;
+  ReceiveKind kind;
+  transport::packet::Endpoint endpoint;
+  std::vector<uint8_t> payload;
 };
 
 class Router {
@@ -40,7 +55,13 @@ private:
   std::unordered_map<TransportKind, Sender, TransportKindHash> senders;
 
 public:
+  boost::signals2::signal<void(const ReceivedMessage &)> rx_signal;
+
   void register_sender(TransportKind kind, Sender sender);
+
+  void ingest_receive(TransportKind kind, ReceiveKind receive_kind,
+                      const transport::packet::Endpoint &endpoint,
+                      const std::vector<uint8_t> &payload);
 
   void upsert_peer(const std::string &hash, const std::string &name,
                    const transport::packet::Endpoint &endpoint);

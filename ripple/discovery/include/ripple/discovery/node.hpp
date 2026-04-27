@@ -37,6 +37,10 @@ private:
   std::shared_ptr<ripple::peer::Router> peer_router;
   boost::signals2::scoped_connection peer_added_connection;
   boost::signals2::scoped_connection quic_state_connection;
+  boost::signals2::scoped_connection quic_receive_connection;
+  boost::signals2::scoped_connection quic_transport_receive_connection;
+  boost::signals2::scoped_connection quic_transport_stream_receive_connection;
+  boost::signals2::scoped_connection mcast_receive_connection;
 
   void peer_added_handler(const peer_ptr peer);
   void

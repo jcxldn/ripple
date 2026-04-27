@@ -4,6 +4,17 @@
 
 namespace ripple::peer {
 
+void Router::ingest_receive(TransportKind kind, ReceiveKind receive_kind,
+                            const transport::packet::Endpoint &endpoint,
+                            const std::vector<uint8_t> &payload) {
+  ReceivedMessage msg;
+  msg.transport = kind;
+  msg.kind = receive_kind;
+  msg.endpoint = endpoint;
+  msg.payload = payload;
+  rx_signal(msg);
+}
+
 void Router::register_sender(TransportKind kind, Sender sender) {
   std::lock_guard<std::mutex> guard(mutex);
   senders[kind] = std::move(sender);

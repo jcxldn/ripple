@@ -1,9 +1,34 @@
 #include "ripple/transport/quic/quic.hpp"
 #include "msquic.h"
+#include <algorithm>
 #include <chrono>
 #include <memory>
+#include <netinet/in.h>
 
 namespace ripple::transport::quic {
+
+namespace {
+
+transport::packet::Endpoint
+endpoint_from_quic_addr(const QuicAddr &remote_addr) {
+  transport::packet::Endpoint remote_endpoint{};
+  remote_endpoint.port = remote_addr.GetPort();
+
+  if (remote_addr.GetFamily() == QUIC_ADDRESS_FAMILY_INET) {
+    remote_endpoint.address = boost::asio::ip::address_v4(
+        ntohl(remote_addr.SockAddr.Ipv4.sin_addr.s_addr));
+  } else if (remote_addr.GetFamily() == QUIC_ADDRESS_FAMILY_INET6) {
+    boost::asio::ip::address_v6::bytes_type bytes{};
+    const auto *raw = remote_addr.SockAddr.Ipv6.sin6_addr.s6_addr;
+    std::copy(raw, raw + bytes.size(), bytes.begin());
+    remote_endpoint.address = boost::asio::ip::address_v6(
+        bytes, remote_addr.SockAddr.Ipv6.sin6_scope_id);
+  }
+
+  return remote_endpoint;
+}
+
+} // namespace
 
 QuicTransport::QuicTransport(QuicOptions &opt, util::cert::id_ptr identity) {
   this->opt = opt;
@@ -143,15 +168,35 @@ QUIC_STATUS QUIC_API QuicTransport::quic_conn_callback(
     }
     break;
   case QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED: {
+    auto *stream_ctx = new StreamCallbackContext();
+    stream_ctx->transport = qt;
+
+    QuicAddr remote_addr;
+    if (QUIC_SUCCEEDED(conn->GetRemoteAddr(remote_addr))) {
+      stream_ctx->remote_endpoint = endpoint_from_quic_addr(remote_addr);
+    }
+
     // Create a stream object which is auto cleaned up
     // on shutdown with our callback
     new MsQuicStream(ev->PEER_STREAM_STARTED.Stream, CleanUpAutoDelete,
-                     quic_stream_callback, qt);
+                     quic_stream_callback, stream_ctx);
     break;
   }
   case QUIC_CONNECTION_EVENT_DATAGRAM_RECEIVED: {
     const auto *b = ev->DATAGRAM_RECEIVED.Buffer;
+    std::vector<uint8_t> payload;
+    if (b && b->Buffer && b->Length > 0) {
+      payload.assign(b->Buffer, b->Buffer + b->Length);
+    }
+
+    transport::packet::Endpoint remote_endpoint{};
+    QuicAddr remote_addr;
+    if (QUIC_SUCCEEDED(conn->GetRemoteAddr(remote_addr))) {
+      remote_endpoint = endpoint_from_quic_addr(remote_addr);
+    }
+
     qt->logger->info("[conn {}] rx datagram {} bytes", (void *)conn, b->Length);
+    qt->datagram_received_ev(remote_endpoint, payload);
     break;
   }
   case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
@@ -183,12 +228,31 @@ QUIC_STATUS QUIC_API QuicTransport::quic_conn_callback(
 
 QUIC_STATUS QUIC_API QuicTransport::quic_stream_callback(
     MsQuicStream *stream, void *ctx, QUIC_STREAM_EVENT *ev) {
-  auto *qt = static_cast<QuicTransport *>(ctx);
+  auto *stream_ctx = static_cast<StreamCallbackContext *>(ctx);
+  if (!stream_ctx || !stream_ctx->transport) {
+    return QUIC_STATUS_SUCCESS;
+  }
+
+  auto *qt = stream_ctx->transport;
+
   switch (ev->Type) {
   case QUIC_STREAM_EVENT_RECEIVE: {
     uint64_t total = ev->RECEIVE.TotalBufferLength;
+    std::vector<uint8_t> payload;
+    payload.reserve(static_cast<size_t>(total));
+
+    for (uint32_t i = 0; i < ev->RECEIVE.BufferCount; ++i) {
+      const auto &buffer = ev->RECEIVE.Buffers[i];
+      if (!buffer.Buffer || buffer.Length == 0) {
+        continue;
+      }
+      payload.insert(payload.end(), buffer.Buffer,
+                     buffer.Buffer + buffer.Length);
+    }
+
     qt->logger->info("[stream {}] rx {} bytes", static_cast<void *>(stream),
                      total);
+    qt->stream_received_ev(stream_ctx->remote_endpoint, payload);
     // Return SUCCESS to signal all bytes consumed; MsQuic will not deliver
     // them again. Use QUIC_STATUS_PENDING + StreamReceiveComplete() for async.
     // -> return QUIC_STATUS_SUCCESS when data consumed!
@@ -220,6 +284,7 @@ QUIC_STATUS QUIC_API QuicTransport::quic_stream_callback(
     // Stream is fully torn down. CleanUpAutoDelete frees the MsQuicStream.
     qt->logger->debug("[stream {}] shutdown complete",
                       static_cast<void *>(stream));
+    delete stream_ctx;
     break;
   default:
     break;

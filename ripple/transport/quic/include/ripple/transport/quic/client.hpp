@@ -96,6 +96,9 @@ private:
 public:
   boost::signals2::signal<void(const packet::Endpoint &, bool)>
       connection_state_ev;
+  boost::signals2::signal<void(const packet::Endpoint &,
+                               const std::vector<uint8_t> &)>
+      datagram_received_ev;
 
   QuicClient(QuicOptions &opt, util::cert::id_ptr identity,
              std::shared_ptr<MsQuicApi> api);
