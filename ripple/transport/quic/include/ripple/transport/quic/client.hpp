@@ -12,6 +12,7 @@
 #include <msquic.hpp>
 
 #include "ripple/logger/logger.hpp"
+#include "ripple/transport/quic/api.hpp"
 #include "ripple/util/cert/identity.hpp"
 
 namespace ripple::transport::quic {
@@ -65,6 +66,8 @@ private:
 
   bool protocol_init();
   QUIC_CREDENTIAL_CONFIG init_create_cred_config();
+  void reap_closed_connections();
+  void shutdown_active_connections();
 
   // #region MsQuic callbacks
   static QUIC_STATUS QUIC_API quic_conn_callback(MsQuicConnection *conn,

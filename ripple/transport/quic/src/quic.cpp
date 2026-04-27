@@ -1,5 +1,6 @@
 #include "ripple/transport/quic/quic.hpp"
 #include "msquic.h"
+#include <chrono>
 #include <memory>
 
 namespace ripple::transport::quic {
@@ -20,26 +21,34 @@ QuicTransport::QuicTransport(QuicOptions &opt, util::cert::id_ptr identity) {
 };
 
 QuicTransport::~QuicTransport() {
+  {
+    std::lock_guard<std::mutex> guard(active_connections_mutex);
+    shutting_down = true;
+  }
+
   listener.reset();
+
+  if (registration) {
+    registration->Shutdown(QUIC_CONNECTION_SHUTDOWN_FLAG_SILENT, 1);
+
+    std::unique_lock<std::mutex> guard(active_connections_mutex);
+    active_connections_drained.wait_for(guard, std::chrono::seconds(1), [this] {
+      return active_connections.empty();
+    });
+  }
+
   configuration.reset();
   registration.reset();
-
-  if (MsQuic == api.get()) {
-    MsQuic = nullptr;
-  }
 
   api.reset();
 }
 
 bool QuicTransport::protocol_init() {
-  api = std::make_shared<MsQuicApi>();
-  if (QUIC_FAILED(api->GetInitStatus())) {
+  api = acquire_msquic_api();
+  if (!api) {
     logger->critical("MsQuicApi init failed!");
     return false;
   }
-
-  // set MsQuic's global pointer
-  MsQuic = api.get();
 
   // Register (defaults to low latency but explicitly set here for ease of use)
   registration = std::make_unique<MsQuicRegistration>(
@@ -116,10 +125,20 @@ uint16_t QuicTransport::get_port() {
 
 QUIC_STATUS QUIC_API QuicTransport::quic_conn_callback(
     MsQuicConnection *conn, void *ctx, QUIC_CONNECTION_EVENT *ev) {
-  QuicTransport *qt = (QuicTransport *)ctx;
+  auto *qt = static_cast<QuicTransport *>(ctx);
   switch (ev->Type) {
-  case QUIC_CONNECTION_EVENT_CONNECTED:
-    qt->logger->info("[conn {}]: connected", (void *)conn);
+  case QUIC_CONNECTION_EVENT_CONNECTED: {
+    std::lock_guard<std::mutex> guard(qt->active_connections_mutex);
+    qt->active_connections.insert(conn);
+    if (!qt->shutting_down) {
+      qt->logger->info("[conn {}]: connected", static_cast<void *>(conn));
+    }
+  } break;
+  case QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE: {
+    std::lock_guard<std::mutex> guard(qt->active_connections_mutex);
+    qt->active_connections.erase(conn);
+  }
+    qt->active_connections_drained.notify_all();
     break;
   default:
     break;

@@ -32,16 +32,23 @@ DiscoveryNode::DiscoveryNode(
   start_millis = get_epoch_millis();
 
   // create a timer to transmit a packet
-  disco_timer = new boost::asio::steady_timer(*io_context.get());
+  disco_timer = std::make_unique<boost::asio::steady_timer>(*io_context.get());
   disco_interval = std::chrono::milliseconds(DISCO_INTERVAL_MS);
 
   // start timer
   disco_timer_act();
 
   // register message listener
-  controller->rx_signal.connect(
+  rx_connection = controller->rx_signal.connect(
       boost::bind(&DiscoveryNode::net_callback, this, std::placeholders::_1));
 };
+
+DiscoveryNode::~DiscoveryNode() {
+  rx_connection.disconnect();
+  if (disco_timer) {
+    disco_timer->cancel();
+  }
+}
 
 long DiscoveryNode::get_epoch_millis() {
 
@@ -85,7 +92,11 @@ void DiscoveryNode::disco_timer_act() {
   transmit_pkt();
 
   disco_timer->expires_after(disco_interval);
-  disco_timer->async_wait(boost::bind(&DiscoveryNode::disco_timer_act, this));
+  disco_timer->async_wait([this](const boost::system::error_code &error) {
+    if (!error) {
+      disco_timer_act();
+    }
+  });
 }
 
 void DiscoveryNode::net_callback(

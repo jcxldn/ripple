@@ -54,11 +54,13 @@ Node::Node() {
   context_thread = std::make_shared<std::thread>(&Node::thread_loop, this);
 
   // connect to sig for new node
-  peer_manager->peer_added_ev.connect(
+  peer_added_connection = peer_manager->peer_added_ev.connect(
       boost::bind(&Node::peer_added_handler, this, std::placeholders::_1));
 };
 
 Node::~Node() {
+  peer_added_connection.disconnect();
+
   io_context->stop();
 
   // wait for io_context to stop
@@ -74,5 +76,7 @@ void Node::peer_added_handler(const peer_ptr peer) {
   // add a client
   quic_client->add_endpoint(peer->endpoints.at(0));
 };
+
+size_t Node::known_peer_count() const { return peer_manager->count(); }
 
 } // namespace ripple::discovery

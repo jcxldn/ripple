@@ -8,6 +8,7 @@
 #include "ripple/transport/packet/controller.hpp"
 #include "ripple/transport/packet/endpoint.hpp"
 #include "ripple/util/cert/identity.hpp"
+#include <boost/signals2/connection.hpp>
 #include <memory>
 
 namespace ripple::discovery {
@@ -22,9 +23,10 @@ private:
   std::shared_ptr<transport::multicast::MulticastTransport> transport;
   std::shared_ptr<transport::packet::PacketController> controller;
   std::shared_ptr<PeerManager> manager;
+  boost::signals2::scoped_connection rx_connection;
 
   // timer to control how often to send disco packets
-  boost::asio::steady_timer *disco_timer;
+  std::unique_ptr<boost::asio::steady_timer> disco_timer;
   std::chrono::milliseconds disco_interval;
 
   long start_millis;
@@ -52,6 +54,7 @@ public:
       std::shared_ptr<transport::multicast::MulticastTransport> transport,
       std::shared_ptr<transport::packet::PacketController> controller,
       std::shared_ptr<PeerManager> manager);
+  ~DiscoveryNode();
 };
 
 } // namespace ripple::discovery

@@ -2,6 +2,8 @@
 #include "msquic.h"
 #include "ripple/transport/packet/endpoint.hpp"
 #include "ripple/util/cert/common.hpp"
+
+#include <algorithm>
 #include <memory>
 
 namespace ripple::transport::quic {
@@ -17,12 +19,11 @@ QuicClient::QuicClient(QuicOptions &opt, util::cert::id_ptr identity,
 
   logger->info("Starting QUIC client");
 
+  this->api = acquire_msquic_api(std::move(this->api));
   if (!this->api) {
     logger->critical("MsQuicApi not provided to client");
     return;
   }
-
-  MsQuic = this->api.get();
   initialized = protocol_init();
 
   if (!initialized) {
@@ -31,10 +32,40 @@ QuicClient::QuicClient(QuicOptions &opt, util::cert::id_ptr identity,
 };
 
 QuicClient::~QuicClient() {
-  std::lock_guard<std::mutex> guard(active_connections_mutex);
-  active_connections.clear();
+  shutdown_active_connections();
+  initialized = false;
   configuration.reset();
   registration.reset();
+}
+
+void QuicClient::reap_closed_connections() {
+  std::lock_guard<std::mutex> guard(active_connections_mutex);
+  active_connections.erase(
+      std::remove_if(active_connections.begin(), active_connections.end(),
+                     [](const std::unique_ptr<ActiveConnection> &connection) {
+                       return connection->context.peer.shutdown;
+                     }),
+      active_connections.end());
+}
+
+void QuicClient::shutdown_active_connections() {
+  std::vector<std::unique_ptr<ActiveConnection>> draining_connections;
+  {
+    std::lock_guard<std::mutex> guard(active_connections_mutex);
+    draining_connections.swap(active_connections);
+  }
+
+  for (auto &active_connection : draining_connections) {
+    if (!active_connection->connection) {
+      continue;
+    }
+
+    active_connection->connection->Callback = MsQuicConnection::NoOpCallback;
+    active_connection->connection->Context = nullptr;
+    active_connection->connection->Shutdown(
+        0, QUIC_CONNECTION_SHUTDOWN_FLAG_SILENT);
+    active_connection->connection->Close();
+  }
 }
 
 bool QuicClient::protocol_init() {
@@ -92,6 +123,8 @@ QUIC_CREDENTIAL_CONFIG QuicClient::init_create_cred_config() {
 };
 
 bool QuicClient::add_endpoint(packet::Endpoint &endpoint) {
+  reap_closed_connections();
+
   if (!initialized || !registration || !configuration) {
     logger->critical("QUIC client is not initialized");
     return false;

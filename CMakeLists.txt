@@ -18,6 +18,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(BUILD_SHARED_LIBS ON)
 
 include(FetchContent)
+include(CTest)
 include(lib/boost.cmake)
 include(lib/cereal.cmake)
 include(lib/spdlog.cmake)

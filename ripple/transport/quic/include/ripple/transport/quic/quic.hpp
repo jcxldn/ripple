@@ -6,7 +6,12 @@
 #include <msquic.hpp>
 
 #include "ripple/logger/logger.hpp"
+#include "ripple/transport/quic/api.hpp"
 #include "ripple/util/cert/identity.hpp"
+
+#include <condition_variable>
+#include <mutex>
+#include <unordered_set>
 
 namespace ripple::transport::quic {
 
@@ -34,6 +39,11 @@ private:
   std::unique_ptr<MsQuicRegistration> registration;
   std::unique_ptr<MsQuicConfiguration> configuration;
   std::unique_ptr<MsQuicAutoAcceptListener> listener;
+
+  std::mutex active_connections_mutex;
+  std::condition_variable active_connections_drained;
+  std::unordered_set<MsQuicConnection *> active_connections;
+  bool shutting_down = false;
 
   bool protocol_init();
   QUIC_CREDENTIAL_CONFIG init_create_cred_config();

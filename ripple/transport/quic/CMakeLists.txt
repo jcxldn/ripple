@@ -11,6 +11,7 @@ add_library(ripple::transport::quic ALIAS ${PROJECT})
 
 target_sources(${PROJECT}
     PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}/src/api.cpp
         ${CMAKE_CURRENT_LIST_DIR}/src/client.cpp
         ${CMAKE_CURRENT_LIST_DIR}/src/quic.cpp
     PUBLIC

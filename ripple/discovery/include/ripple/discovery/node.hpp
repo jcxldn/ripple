@@ -9,6 +9,7 @@
 #include "ripple/transport/quic/client.hpp"
 #include "ripple/transport/quic/quic.hpp"
 #include "ripple/util/cert/identity.hpp"
+#include <boost/signals2/connection.hpp>
 
 namespace ripple::discovery {
 
@@ -32,12 +33,15 @@ private:
   std::shared_ptr<DiscoveryNode> discovery;
 
   std::shared_ptr<PeerManager> peer_manager;
+  boost::signals2::scoped_connection peer_added_connection;
 
   void peer_added_handler(const peer_ptr peer);
 
 public:
   Node();
   ~Node();
+
+  size_t known_peer_count() const;
 };
 
 } // namespace ripple::discovery
