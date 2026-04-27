@@ -53,6 +53,10 @@ private:
                                                  void *ctx,
                                                  QUIC_CONNECTION_EVENT *ev);
 
+  static QUIC_STATUS QUIC_API quic_stream_callback(MsQuicStream *stream,
+                                                   void *ctx,
+                                                   QUIC_STREAM_EVENT *ev);
+
 public:
   QuicTransport(QuicOptions &opt, util::cert::id_ptr identity);
   ~QuicTransport();

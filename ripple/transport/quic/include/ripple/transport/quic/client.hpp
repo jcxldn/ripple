@@ -69,6 +69,10 @@ private:
   void reap_closed_connections();
   void shutdown_active_connections();
 
+  // Returns the connected, non-shutdown MsQuicConnection for an endpoint,
+  // or nullptr. Caller must hold active_connections_mutex.
+  MsQuicConnection *find_connection(const packet::Endpoint &endpoint);
+
   // #region MsQuic callbacks
   static QUIC_STATUS QUIC_API quic_conn_callback(MsQuicConnection *conn,
                                                  void *ctx_ptr,
@@ -80,6 +84,14 @@ public:
   ~QuicClient();
 
   bool add_endpoint(packet::Endpoint &endpoint);
+
+  // Send a QUIC datagram (unreliable, must fit in one packet) to an endpoint.
+  bool send_datagram(const packet::Endpoint &endpoint,
+                     const std::vector<uint8_t> &data);
+
+  // Open a unidirectional stream to an endpoint and send data.
+  bool send_stream(const packet::Endpoint &endpoint,
+                   const std::vector<uint8_t> &data);
 };
 } // namespace ripple::transport::quic
 

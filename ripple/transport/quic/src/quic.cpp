@@ -141,6 +141,27 @@ QUIC_STATUS QUIC_API QuicTransport::quic_conn_callback(
       qt->logger->info("[conn {}]: connected", static_cast<void *>(conn));
     }
     break;
+  case QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED: {
+    // Create a stream object which is auto cleaned up
+    // on shutdown with our callback
+    new MsQuicStream(ev->PEER_STREAM_STARTED.Stream, CleanUpAutoDelete,
+                     quic_stream_callback, qt);
+    break;
+  }
+  case QUIC_CONNECTION_EVENT_DATAGRAM_RECEIVED: {
+    const auto *b = ev->DATAGRAM_RECEIVED.Buffer;
+    qt->logger->info("[conn {}] rx datagram {} bytes", (void *)conn, b->Length);
+    break;
+  }
+  case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
+    qt->logger->warn("[conn {}]: shutdown by transport, status=0x{:x} error={}",
+                     (void *)conn, ev->SHUTDOWN_INITIATED_BY_TRANSPORT.Status,
+                     ev->SHUTDOWN_INITIATED_BY_TRANSPORT.ErrorCode);
+    break;
+  case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_PEER:
+    qt->logger->warn("[conn {}]: shutdown by peer, error={}", (void *)conn,
+                     ev->SHUTDOWN_INITIATED_BY_PEER.ErrorCode);
+    break;
   case QUIC_CONNECTION_EVENT_SHUTDOWN_COMPLETE: {
     {
       std::lock_guard<std::mutex> guard(qt->active_connections_mutex);
@@ -154,4 +175,49 @@ QUIC_STATUS QUIC_API QuicTransport::quic_conn_callback(
   return QUIC_STATUS_SUCCESS;
 };
 
+QUIC_STATUS QUIC_API QuicTransport::quic_stream_callback(
+    MsQuicStream *stream, void *ctx, QUIC_STREAM_EVENT *ev) {
+  auto *qt = static_cast<QuicTransport *>(ctx);
+  switch (ev->Type) {
+  case QUIC_STREAM_EVENT_RECEIVE: {
+    uint64_t total = ev->RECEIVE.TotalBufferLength;
+    qt->logger->info("[stream {}] rx {} bytes", static_cast<void *>(stream),
+                     total);
+    // Return SUCCESS to signal all bytes consumed; MsQuic will not deliver
+    // them again. Use QUIC_STATUS_PENDING + StreamReceiveComplete() for async.
+    // -> return QUIC_STATUS_SUCCESS when data consumed!
+    break;
+  }
+  case QUIC_STREAM_EVENT_SEND_COMPLETE:
+    // Send buffer returned to caller; Canceled=TRUE means it was not sent.
+    if (ev->SEND_COMPLETE.Canceled) {
+      qt->logger->warn("[stream {}] send canceled",
+                       static_cast<void *>(stream));
+    }
+    break;
+  case QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN:
+    // Peer sent FIN — graceful half-close of their send side.
+    qt->logger->debug("[stream {}] peer send shutdown",
+                      static_cast<void *>(stream));
+    break;
+  case QUIC_STREAM_EVENT_PEER_SEND_ABORTED:
+    qt->logger->warn("[stream {}] peer send aborted, error={}",
+                     static_cast<void *>(stream),
+                     ev->PEER_SEND_ABORTED.ErrorCode);
+    break;
+  case QUIC_STREAM_EVENT_PEER_RECEIVE_ABORTED:
+    qt->logger->warn("[stream {}] peer receive aborted, error={}",
+                     static_cast<void *>(stream),
+                     ev->PEER_RECEIVE_ABORTED.ErrorCode);
+    break;
+  case QUIC_STREAM_EVENT_SHUTDOWN_COMPLETE:
+    // Stream is fully torn down. CleanUpAutoDelete frees the MsQuicStream.
+    qt->logger->debug("[stream {}] shutdown complete",
+                      static_cast<void *>(stream));
+    break;
+  default:
+    break;
+  }
+  return QUIC_STATUS_SUCCESS;
+}
 } // namespace ripple::transport::quic

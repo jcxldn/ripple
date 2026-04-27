@@ -240,4 +240,85 @@ QUIC_STATUS QUIC_API QuicClient::quic_conn_callback(MsQuicConnection *conn,
   return QUIC_STATUS_SUCCESS;
 };
 
+MsQuicConnection *
+QuicClient::find_connection(const packet::Endpoint &endpoint) {
+  // Caller must hold active_connections_mutex.
+  for (auto &ac : active_connections) {
+    if (ac->context.peer.endpoint == endpoint && ac->context.peer.connected &&
+        !ac->context.peer.shutdown) {
+      return ac->connection.get();
+    }
+  }
+  return nullptr;
+}
+
+bool QuicClient::send_datagram(const packet::Endpoint &endpoint,
+                               const std::vector<uint8_t> &data) {
+  std::lock_guard<std::mutex> guard(active_connections_mutex);
+  auto *conn = find_connection(endpoint);
+  if (!conn) {
+    logger->warn("send_datagram: no connected peer {}", endpoint.to_string());
+    return false;
+  }
+
+  QUIC_BUFFER buf{static_cast<uint32_t>(data.size()),
+                  const_cast<uint8_t *>(data.data())};
+  QUIC_STATUS status =
+      MsQuic->DatagramSend(*conn, &buf, 1, QUIC_SEND_FLAG_NONE, nullptr);
+  if (QUIC_FAILED(status)) {
+    logger->error("send_datagram: DatagramSend failed 0x{:x}", status);
+    return false;
+  }
+  return true;
+}
+
+bool QuicClient::send_stream(const packet::Endpoint &endpoint,
+                             const std::vector<uint8_t> &data) {
+  std::lock_guard<std::mutex> guard(active_connections_mutex);
+  auto *conn = find_connection(endpoint);
+  if (!conn) {
+    logger->warn("send_stream: no connected peer {}", endpoint.to_string());
+    return false;
+  }
+
+  // Heap-allocate the buffer so it stays alive until SEND_COMPLETE.
+  auto *buf_copy = new std::vector<uint8_t>(data);
+  QUIC_BUFFER quic_buf{static_cast<uint32_t>(buf_copy->size()),
+                       buf_copy->data()};
+
+  // CleanUpAutoDelete: MsQuic closes the stream handle after SHUTDOWN_COMPLETE.
+  auto *stream = new MsQuicStream(
+      *conn, QUIC_STREAM_OPEN_FLAG_UNIDIRECTIONAL, CleanUpAutoDelete,
+      [](MsQuicStream *s, void *ctx, QUIC_STREAM_EVENT *ev) -> QUIC_STATUS {
+        if (ev->Type == QUIC_STREAM_EVENT_SEND_COMPLETE) {
+          delete static_cast<std::vector<uint8_t> *>(ctx);
+        }
+        return QUIC_STATUS_SUCCESS;
+      },
+      buf_copy);
+
+  if (!stream->IsValid()) {
+    logger->error("send_stream: StreamOpen failed");
+    delete buf_copy;
+    delete stream;
+    return false;
+  }
+
+  if (QUIC_FAILED(stream->Start(QUIC_STREAM_START_FLAG_IMMEDIATE))) {
+    logger->error("send_stream: StreamStart failed");
+    delete buf_copy;
+    delete stream;
+    return false;
+  }
+
+  QUIC_STATUS status = stream->Send(&quic_buf, 1, QUIC_SEND_FLAG_FIN, buf_copy);
+  if (QUIC_FAILED(status)) {
+    logger->error("send_stream: StreamSend failed 0x{:x}", status);
+    // Stream is already started; shut it down rather than double-delete.
+    stream->ConnectionShutdown(1);
+    return false;
+  }
+  return true;
+}
+
 } // namespace ripple::transport::quic
