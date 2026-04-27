@@ -1,7 +1,6 @@
 #ifndef QUIC_API_HPP_
 #define QUIC_API_HPP_
 
-#define QUIC_API_ENABLE_PREVIEW_FEATURES 1
 #include <msquic.hpp>
 
 #include <memory>

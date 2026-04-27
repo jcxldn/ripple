@@ -65,7 +65,8 @@ bool QuicTransport::protocol_init() {
       .SetPeerBidiStreamCount(opt.peer_stream_bidirectional_count)
       .SetPeerUnidiStreamCount(opt.peer_stream_unidirectional_count)
       .SetDatagramReceiveEnabled(DATAGRAM_RX_ENABLED)
-      .SetServerResumptionLevel(RESUMPTION_LEVEL);
+      .SetServerResumptionLevel(RESUMPTION_LEVEL)
+      .SetNetStatsEventEnabled(true);
 
   // Load credentials from identity
   QUIC_CREDENTIAL_CONFIG creds = init_create_cred_config();
@@ -169,6 +170,11 @@ QUIC_STATUS QUIC_API QuicTransport::quic_conn_callback(
     }
     qt->active_connections_drained.notify_all();
   } break;
+  case QUIC_CONNECTION_EVENT_NETWORK_STATISTICS: {
+    auto stats = ev->NETWORK_STATISTICS;
+    // copy to peer info
+    break;
+  }
   default:
     break;
   }

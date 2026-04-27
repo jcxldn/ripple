@@ -8,7 +8,6 @@
 #include <mutex>
 #include <vector>
 
-#define QUIC_API_ENABLE_PREVIEW_FEATURES 1
 #include <msquic.hpp>
 
 #include "ripple/logger/logger.hpp"

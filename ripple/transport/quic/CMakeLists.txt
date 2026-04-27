@@ -9,6 +9,8 @@ project(
 add_library(${PROJECT})
 add_library(ripple::transport::quic ALIAS ${PROJECT})
 
+target_compile_definitions(${PROJECT} PRIVATE QUIC_API_ENABLE_PREVIEW_FEATURES)
+
 target_sources(${PROJECT}
     PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/src/api.cpp

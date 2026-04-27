@@ -2,7 +2,6 @@
 #define QUIC_QUIC_HPP_
 
 #include "ripple/transport/quic/options.hpp"
-#define QUIC_API_ENABLE_PREVIEW_FEATURES 1
 #include <msquic.hpp>
 
 #include "ripple/logger/logger.hpp"
