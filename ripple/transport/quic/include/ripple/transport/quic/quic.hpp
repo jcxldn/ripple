@@ -7,7 +7,7 @@
 #include <msquic.hpp>
 
 #include "ripple/logger/logger.hpp"
-#include "ripple/transport/quic/api.hpp"
+#include "ripple/transport/stats/stats.hpp"
 #include "ripple/util/cert/identity.hpp"
 
 #include <condition_variable>
@@ -70,6 +70,9 @@ public:
   boost::signals2::signal<void(const transport::packet::Endpoint &,
                                const std::vector<uint8_t> &)>
       stream_received_ev;
+  boost::signals2::signal<void(const transport::packet::Endpoint &,
+                               const transport::stats::NetworkStats &)>
+      network_stats_ev;
 
   QuicTransport(QuicOptions &opt, util::cert::id_ptr identity);
   ~QuicTransport();

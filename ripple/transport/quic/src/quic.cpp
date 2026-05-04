@@ -1,5 +1,6 @@
 #include "ripple/transport/quic/quic.hpp"
 #include "msquic.h"
+#include "ripple/transport/quic/api.hpp"
 #include <algorithm>
 #include <chrono>
 #include <memory>
@@ -217,7 +218,26 @@ QUIC_STATUS QUIC_API QuicTransport::quic_conn_callback(
   } break;
   case QUIC_CONNECTION_EVENT_NETWORK_STATISTICS: {
     auto stats = ev->NETWORK_STATISTICS;
-    // copy to peer info
+
+    // Create NetworkStats struct from MsQuic statistics
+    transport::stats::NetworkStats network_stats{};
+    network_stats.rtt_us = stats.SmoothedRTT;
+    network_stats.congestion_window = stats.CongestionWindow;
+    network_stats.bandwidth = stats.Bandwidth;
+    network_stats.bytes_in_flight = stats.BytesInFlight;
+
+    // Get remote endpoint and emit signal
+    transport::packet::Endpoint remote_endpoint{};
+    QuicAddr remote_addr;
+    if (QUIC_SUCCEEDED(conn->GetRemoteAddr(remote_addr))) {
+      remote_endpoint = endpoint_from_quic_addr(remote_addr);
+    }
+
+    qt->logger->debug("[conn {}] network stats: rtt={}us, cwnd={}, bw={} bps",
+                      (void *)conn, network_stats.rtt_us,
+                      network_stats.congestion_window, network_stats.bandwidth);
+
+    qt->network_stats_ev(remote_endpoint, network_stats);
     break;
   }
   default:

@@ -22,6 +22,7 @@ target_include_directories(${PROJECT}
 target_link_libraries(${PROJECT}
     PUBLIC
         ripple::transport::packet
+        ripple::transport::stats
 )
 
 install(TARGETS ${PROJECT} DESTINATION lib)

@@ -2,6 +2,7 @@
 #define PEER_ROUTER_HPP_
 
 #include "ripple/transport/packet/endpoint.hpp"
+#include "ripple/transport/stats/stats.hpp"
 
 #include <boost/signals2.hpp>
 
@@ -53,6 +54,8 @@ private:
   mutable std::mutex mutex;
   std::unordered_map<std::string, PeerRecord> peers;
   std::unordered_map<TransportKind, Sender, TransportKindHash> senders;
+  std::unordered_map<std::string, transport::stats::NetworkStats>
+      stats_by_endpoint;
 
 public:
   boost::signals2::signal<void(const ReceivedMessage &)> rx_signal;
@@ -83,6 +86,21 @@ public:
                             TransportKind kind);
 
   size_t count() const;
+
+  // Search for peer by endpoint
+  std::string
+  find_peer_hash_by_endpoint(const transport::packet::Endpoint &endpoint) const;
+
+  // Search for peer by name
+  std::string find_peer_hash_by_name(const std::string &name) const;
+
+  // Update network stats for an endpoint
+  void update_network_stats(const transport::packet::Endpoint &endpoint,
+                            const transport::stats::NetworkStats &stats);
+
+  // Get network stats for an endpoint
+  transport::stats::NetworkStats
+  get_network_stats(const transport::packet::Endpoint &endpoint) const;
 };
 
 } // namespace ripple::peer

@@ -186,4 +186,47 @@ size_t Router::count() const {
   return peers.size();
 }
 
+std::string Router::find_peer_hash_by_endpoint(
+    const transport::packet::Endpoint &endpoint) const {
+  std::lock_guard<std::mutex> guard(mutex);
+  for (const auto &[hash, peer] : peers) {
+    auto endpoint_it =
+        std::find_if(peer.endpoints.begin(), peer.endpoints.end(),
+                     [&endpoint](const transport::packet::Endpoint &current) {
+                       return current.address == endpoint.address &&
+                              current.port == endpoint.port;
+                     });
+    if (endpoint_it != peer.endpoints.end()) {
+      return hash;
+    }
+  }
+  return "";
+}
+
+std::string Router::find_peer_hash_by_name(const std::string &name) const {
+  std::lock_guard<std::mutex> guard(mutex);
+  for (const auto &[hash, peer] : peers) {
+    if (peer.name == name) {
+      return hash;
+    }
+  }
+  return "";
+}
+
+void Router::update_network_stats(const transport::packet::Endpoint &endpoint,
+                                  const transport::stats::NetworkStats &stats) {
+  std::lock_guard<std::mutex> guard(mutex);
+  stats_by_endpoint[endpoint.to_string()] = stats;
+}
+
+transport::stats::NetworkStats
+Router::get_network_stats(const transport::packet::Endpoint &endpoint) const {
+  std::lock_guard<std::mutex> guard(mutex);
+  auto it = stats_by_endpoint.find(endpoint.to_string());
+  if (it != stats_by_endpoint.end()) {
+    return it->second;
+  }
+  return transport::stats::NetworkStats();
+}
+
 } // namespace ripple::peer
