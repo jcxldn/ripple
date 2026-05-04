@@ -69,9 +69,9 @@ QuicConnection::QuicConnection(Peer *peer) {
 
   // update stats when available
   quic->network_stats_ev.connect(
-      [&peer](const transport::packet::Endpoint &endpoint,
-              const transport::stats::NetworkStats &stats) {
-        peer->get_router()->update_network_stats(endpoint, stats);
+      [this](const transport::packet::Endpoint &endpoint,
+             const transport::stats::NetworkStats &stats) {
+        this->peer->get_router()->update_network_stats(endpoint, stats);
       });
 };
 
