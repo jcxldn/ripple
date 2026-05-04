@@ -29,4 +29,6 @@ void Peer::start() {
   logger->info("Using identity '{}' (hash {})", id->get_cn(), id->spki_b64());
 };
 
+void Peer::set_identity(util::cert::id_ptr &id) { id = std::move(id); };
+
 } // namespace ripple::peer
