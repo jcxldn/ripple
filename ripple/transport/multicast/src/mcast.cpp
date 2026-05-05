@@ -1,6 +1,7 @@
 #include "ripple/transport/multicast/mcast.hpp"
 #include "ripple/logger/logger.hpp"
 #include "ripple/transport/packet/endpoint.hpp"
+#include <boost/asio/ip/address_v6.hpp>
 #include <memory>
 
 namespace ripple::transport::multicast {
@@ -62,7 +63,7 @@ void MulticastTransport::tx_setup() {
                   local_addr.to_string());
 
     std::shared_ptr<TransmitPair> pair = std::make_shared<TransmitPair>(
-        io_context, mcast_ip, local_addr, opt.port);
+        io_context, mcast_ip, local_addr, opt.port, opt.ttl);
 
     tx_pairs.push_back(pair);
   }
@@ -88,8 +89,7 @@ void MulticastTransport::rx_setup() {
       rx_stop_signal.slot()); // Binds internally
 
   // setup socket
-  boost::asio::ip::address addr =
-      boost::asio::ip::make_address(opt.listen_interface.ip);
+  boost::asio::ip::address addr = boost::asio::ip::address_v4::any();
   rx_endpoint =
       std::make_shared<boost::asio::ip::udp::endpoint>(addr, opt.port);
   rx_socket = std::make_shared<boost::asio::ip::udp::socket>(*io_context.get());

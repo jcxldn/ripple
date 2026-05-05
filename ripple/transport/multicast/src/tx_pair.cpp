@@ -4,7 +4,7 @@
 namespace ripple::transport::multicast {
 TransmitPair::TransmitPair(std::shared_ptr<boost::asio::io_context> io_context,
                            boost::asio::ip::address mcast_ip,
-                           boost::asio::ip::address ip, int port) {
+                           boost::asio::ip::address ip, int port, int ttl) {
   logger = logger::LoggerProvider::get_logger(
       "ripple::transport::multicast::TransmitPair");
 
@@ -16,6 +16,7 @@ TransmitPair::TransmitPair(std::shared_ptr<boost::asio::io_context> io_context,
       boost::asio::ip::multicast::join_group(mcast_ip.to_v4(), ip.to_v4()));
   socket->set_option(
       boost::asio::ip::multicast::outbound_interface(ip.to_v4()));
+  socket->set_option(boost::asio::ip::multicast::hops(ttl));
 };
 
 TransmitPair::~TransmitPair() {

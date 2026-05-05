@@ -20,7 +20,7 @@ private:
 public:
   TransmitPair(std::shared_ptr<boost::asio::io_context> io_context,
                boost::asio::ip::address mcast_ip, boost::asio::ip::address ip,
-               int port);
+               int port, int ttl);
   ~TransmitPair();
 
   std::size_t send(boost::asio::mutable_buffer &buf);

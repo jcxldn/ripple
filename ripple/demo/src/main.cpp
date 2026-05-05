@@ -14,7 +14,7 @@ void signal_handler(int signal) {
 }
 
 int main(int argc, char **argv) {
-  ripple::logger::LoggerProvider::set_level(spdlog::level::level_enum::debug);
+  ripple::logger::LoggerProvider::set_level(spdlog::level::level_enum::trace);
 
   auto peer = new ripple::peer::Peer();
 
