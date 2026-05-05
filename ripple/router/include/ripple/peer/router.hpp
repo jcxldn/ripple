@@ -91,8 +91,9 @@ public:
   std::string
   find_peer_hash_by_endpoint(const transport::packet::Endpoint &endpoint) const;
 
-  // Search for peer by name
+  // Search for peer by name and hash
   std::string find_peer_hash_by_name(const std::string &name) const;
+  std::string find_peer_name_by_hash(const std::string &hash) const;
 
   // Update network stats for an endpoint
   void update_network_stats(const transport::packet::Endpoint &endpoint,

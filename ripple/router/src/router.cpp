@@ -213,6 +213,16 @@ std::string Router::find_peer_hash_by_name(const std::string &name) const {
   return "";
 }
 
+std::string Router::find_peer_name_by_hash(const std::string &hash) const {
+  std::lock_guard<std::mutex> guard(mutex);
+  for (const auto &[name, peer] : peers) {
+    if (peer.hash == hash) {
+      return name;
+    }
+  }
+  return "";
+}
+
 void Router::update_network_stats(const transport::packet::Endpoint &endpoint,
                                   const transport::stats::NetworkStats &stats) {
   std::lock_guard<std::mutex> guard(mutex);
