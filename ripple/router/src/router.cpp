@@ -215,9 +215,9 @@ std::string Router::find_peer_hash_by_name(const std::string &name) const {
 
 std::string Router::find_peer_name_by_hash(const std::string &hash) const {
   std::lock_guard<std::mutex> guard(mutex);
-  for (const auto &[name, peer] : peers) {
+  for (const auto &[p_hash, peer] : peers) {
     if (peer.hash == hash) {
-      return name;
+      return peer.name;
     }
   }
   return "";
