@@ -2,7 +2,10 @@
 #include "openssl/bio.h"
 #include "openssl/crypto.h"
 #include "openssl/x509v3.h"
+#include <boost/beast/core/detail/base64.hpp>
 #include <stdexcept>
+
+using namespace boost::beast::detail;
 
 namespace ripple::util::cert {
 // nid: numeric identifier
@@ -78,6 +81,15 @@ std::vector<uint8_t> hash_cert_spki(cert_ptr &cert) {
   EVP_Digest(der, len, out.data(), &olen, EVP_sha256(), nullptr);
   OPENSSL_free(der);
   return out;
+};
+
+std::string spki_hash_to_b64(const std::vector<uint8_t> &hash) {
+  std::string dest;
+  dest.resize(base64::encoded_size(hash.size()));
+  std::size_t written =
+      base64::encode(&dest[0], hash.data(), hash.size());
+  dest.resize(written);
+  return dest;
 };
 
 } // namespace ripple::util::cert

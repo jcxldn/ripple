@@ -6,11 +6,13 @@ namespace ripple::peer {
 
 void Router::ingest_receive(TransportKind kind, ReceiveKind receive_kind,
                             const transport::packet::Endpoint &endpoint,
+                            const std::string &peer_hash,
                             const std::vector<uint8_t> &payload) {
   ReceivedMessage msg;
   msg.transport = kind;
   msg.kind = receive_kind;
   msg.endpoint = endpoint;
+  msg.peer_hash = peer_hash;
   msg.payload = payload;
   rx_signal(msg);
 }
@@ -31,7 +33,7 @@ void Router::upsert_peer(const std::string &hash, const std::string &name,
     record.name = name;
     record.endpoints.push_back(endpoint);
     // emit an event so quic (if connection added) can connect to this endpoint
-    endpoint_added(endpoint);
+    endpoint_added(endpoint, hash);
     peers.emplace(hash, std::move(record));
     return;
   }
@@ -53,7 +55,7 @@ void Router::upsert_peer(const std::string &hash, const std::string &name,
   if (endpoint_it == record.endpoints.end()) {
     record.endpoints.push_back(endpoint);
     // emit an event so quic (if connection added) can connect to this endpoint
-    endpoint_added(endpoint);
+    endpoint_added(endpoint, hash);
   }
 }
 

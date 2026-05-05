@@ -20,7 +20,8 @@ namespace ripple::transport::quic {
 
 struct QuicPeer {
   packet::Endpoint endpoint;
-  std::vector<uint8_t> expected_spki_hash;
+  std::string expected_peer_hash; // b64 spki hash; empty = accept any
+  std::string verified_peer_hash; // b64 spki hash confirmed after TLS handshake
 
   std::condition_variable connection_state_change;
   std::mutex connection_state_mutex;
@@ -96,7 +97,7 @@ private:
 public:
   boost::signals2::signal<void(const packet::Endpoint &, bool)>
       connection_state_ev;
-  boost::signals2::signal<void(const packet::Endpoint &,
+  boost::signals2::signal<void(const packet::Endpoint &, const std::string &,
                                const std::vector<uint8_t> &)>
       datagram_received_ev;
 
@@ -104,7 +105,8 @@ public:
              std::shared_ptr<MsQuicApi> api);
   ~QuicClient();
 
-  bool add_endpoint(const packet::Endpoint &endpoint);
+  bool add_endpoint(const packet::Endpoint &endpoint,
+                    const std::string &expected_peer_hash = "");
 
   // Send a QUIC datagram (unreliable, must fit in one packet) to an endpoint.
   bool send_datagram(const packet::Endpoint &endpoint,

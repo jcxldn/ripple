@@ -1,6 +1,7 @@
 #include "ripple/transport/quic/quic.hpp"
 #include "msquic.h"
 #include "ripple/transport/quic/api.hpp"
+#include "ripple/util/cert/common.hpp"
 #include <algorithm>
 #include <chrono>
 #include <memory>
@@ -137,7 +138,9 @@ QUIC_CREDENTIAL_CONFIG QuicTransport::init_create_cred_config() {
   QUIC_CREDENTIAL_CONFIG cred{};
   cred.Type = QUIC_CREDENTIAL_TYPE_CERTIFICATE_PKCS12;
   cred.CertificatePkcs12 = &identity_pkcs12;
-  cred.Flags = QUIC_CREDENTIAL_FLAG_NONE; // server
+  cred.Flags = QUIC_CREDENTIAL_FLAG_REQUIRE_CLIENT_AUTHENTICATION |
+               QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED |
+               QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION; // server
 
   // return ref
   return cred;
@@ -168,6 +171,26 @@ QUIC_STATUS QUIC_API QuicTransport::quic_conn_callback(
       qt->logger->info("[conn {}]: connected", static_cast<void *>(conn));
     }
     break;
+  case QUIC_CONNECTION_EVENT_PEER_CERTIFICATE_RECEIVED: {
+    auto *raw_cert =
+        static_cast<X509 *>(ev->PEER_CERTIFICATE_RECEIVED.Certificate);
+    if (!raw_cert) {
+      qt->logger->critical("[conn {}] no peer cert", static_cast<void *>(conn));
+      return QUIC_STATUS_BAD_CERTIFICATE;
+    }
+    util::cert::cert_ptr peer_cert(X509_dup(raw_cert));
+    if (!peer_cert) {
+      qt->logger->critical("[conn {}] X509_dup failed",
+                           static_cast<void *>(conn));
+      return QUIC_STATUS_BAD_CERTIFICATE;
+    }
+    auto hash = util::cert::spki_hash_to_b64(util::cert::hash_cert_spki(peer_cert));
+    qt->logger->info("[conn {}] client SPKI: {}", static_cast<void *>(conn),
+                     hash);
+    std::lock_guard<std::mutex> guard(qt->conn_hash_mutex);
+    qt->conn_to_peer_hash[conn] = std::move(hash);
+    break;
+  }
   case QUIC_CONNECTION_EVENT_PEER_STREAM_STARTED: {
     auto *stream_ctx = new StreamCallbackContext();
     stream_ctx->transport = qt;
@@ -175,6 +198,13 @@ QUIC_STATUS QUIC_API QuicTransport::quic_conn_callback(
     QuicAddr remote_addr;
     if (QUIC_SUCCEEDED(conn->GetRemoteAddr(remote_addr))) {
       stream_ctx->remote_endpoint = endpoint_from_quic_addr(remote_addr);
+    }
+    {
+      std::lock_guard<std::mutex> guard(qt->conn_hash_mutex);
+      auto it = qt->conn_to_peer_hash.find(conn);
+      if (it != qt->conn_to_peer_hash.end()) {
+        stream_ctx->peer_hash = it->second;
+      }
     }
 
     // Create a stream object which is auto cleaned up
@@ -196,8 +226,17 @@ QUIC_STATUS QUIC_API QuicTransport::quic_conn_callback(
       remote_endpoint = endpoint_from_quic_addr(remote_addr);
     }
 
+    std::string peer_hash;
+    {
+      std::lock_guard<std::mutex> guard(qt->conn_hash_mutex);
+      auto it = qt->conn_to_peer_hash.find(conn);
+      if (it != qt->conn_to_peer_hash.end()) {
+        peer_hash = it->second;
+      }
+    }
+
     qt->logger->info("[conn {}] rx datagram {} bytes", (void *)conn, b->Length);
-    qt->datagram_received_ev(remote_endpoint, payload);
+    qt->datagram_received_ev(remote_endpoint, peer_hash, payload);
     break;
   }
   case QUIC_CONNECTION_EVENT_SHUTDOWN_INITIATED_BY_TRANSPORT:
@@ -213,6 +252,10 @@ QUIC_STATUS QUIC_API QuicTransport::quic_conn_callback(
     {
       std::lock_guard<std::mutex> guard(qt->active_connections_mutex);
       qt->active_connections.erase(conn);
+    }
+    {
+      std::lock_guard<std::mutex> guard(qt->conn_hash_mutex);
+      qt->conn_to_peer_hash.erase(conn);
     }
     qt->active_connections_drained.notify_all();
   } break;
@@ -272,7 +315,8 @@ QUIC_STATUS QUIC_API QuicTransport::quic_stream_callback(
 
     qt->logger->info("[stream {}] rx {} bytes", static_cast<void *>(stream),
                      total);
-    qt->stream_received_ev(stream_ctx->remote_endpoint, payload);
+    qt->stream_received_ev(stream_ctx->remote_endpoint, stream_ctx->peer_hash,
+                           payload);
     // Return SUCCESS to signal all bytes consumed; MsQuic will not deliver
     // them again. Use QUIC_STATUS_PENDING + StreamReceiveComplete() for async.
     // -> return QUIC_STATUS_SUCCESS when data consumed!

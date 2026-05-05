@@ -50,6 +50,8 @@ key_ptr key_from_pem(const std::string &pem);
 cert_ptr cert_from_pem(const std::string &pem);
 
 std::vector<uint8_t> hash_cert_spki(cert_ptr &cert);
+std::vector<uint8_t> hash_cert_spki(X509 *cert);
+std::string spki_hash_to_b64(const std::vector<uint8_t> &hash);
 
 } // namespace ripple::util::cert
 

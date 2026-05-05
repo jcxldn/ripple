@@ -84,26 +84,26 @@ Node::Node() {
 
   quic_receive_connection = quic_client->datagram_received_ev.connect(
       [this](const transport::packet::Endpoint &endpoint,
-             const std::vector<uint8_t> &payload) {
+             const std::string &peer_hash, const std::vector<uint8_t> &payload) {
         peer_router->ingest_receive(ripple::peer::TransportKind::quic,
                                     ripple::peer::ReceiveKind::datagram,
-                                    endpoint, payload);
+                                    endpoint, peer_hash, payload);
       });
 
   quic_transport_receive_connection = quic->datagram_received_ev.connect(
       [this](const transport::packet::Endpoint &endpoint,
-             const std::vector<uint8_t> &payload) {
+             const std::string &peer_hash, const std::vector<uint8_t> &payload) {
         peer_router->ingest_receive(ripple::peer::TransportKind::quic,
                                     ripple::peer::ReceiveKind::datagram,
-                                    endpoint, payload);
+                                    endpoint, peer_hash, payload);
       });
 
   quic_transport_stream_receive_connection = quic->stream_received_ev.connect(
       [this](const transport::packet::Endpoint &endpoint,
-             const std::vector<uint8_t> &payload) {
+             const std::string &peer_hash, const std::vector<uint8_t> &payload) {
         peer_router->ingest_receive(ripple::peer::TransportKind::quic,
                                     ripple::peer::ReceiveKind::stream, endpoint,
-                                    payload);
+                                    peer_hash, payload);
       });
 
   mcast_receive_connection = mcast->rx_signal.connect(
@@ -113,7 +113,7 @@ Node::Node() {
         }
         peer_router->ingest_receive(ripple::peer::TransportKind::multicast,
                                     ripple::peer::ReceiveKind::packet,
-                                    packet.endpoint, *packet.packet.data);
+                                    packet.endpoint, "", *packet.packet.data);
       });
 };
 
@@ -140,7 +140,7 @@ void Node::peer_added_handler(const peer_ptr peer) {
   peer_router->upsert_peer(peer->hash, peer->name, peer->endpoints.at(0));
 
   // add a client
-  quic_client->add_endpoint(peer->endpoints.at(0));
+  quic_client->add_endpoint(peer->endpoints.at(0), peer->hash);
 };
 
 void Node::quic_connection_state_handler(

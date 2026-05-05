@@ -37,6 +37,7 @@ struct ReceivedMessage {
   TransportKind transport;
   ReceiveKind kind;
   transport::packet::Endpoint endpoint;
+  std::string peer_hash; // empty if sender is not a known peer
   std::vector<uint8_t> payload;
 };
 
@@ -60,13 +61,15 @@ private:
 public:
   boost::signals2::signal<void(const ReceivedMessage &)> rx_signal;
 
-  boost::signals2::signal<void(const transport::packet::Endpoint &)>
+  boost::signals2::signal<void(const transport::packet::Endpoint &,
+                               const std::string &)>
       endpoint_added;
 
   void register_sender(TransportKind kind, Sender sender);
 
   void ingest_receive(TransportKind kind, ReceiveKind receive_kind,
                       const transport::packet::Endpoint &endpoint,
+                      const std::string &peer_hash,
                       const std::vector<uint8_t> &payload);
 
   void upsert_peer(const std::string &hash, const std::string &name,

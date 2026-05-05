@@ -38,33 +38,34 @@ QuicConnection::QuicConnection(Peer *peer) {
   // this is unused in curr impl, we use unidirectional from our server inst.
   quic_receive_connection = quic_client->datagram_received_ev.connect(
       [this](const transport::packet::Endpoint &endpoint,
-             const std::vector<uint8_t> &payload) {
+             const std::string &peer_hash, const std::vector<uint8_t> &payload) {
         this->peer->get_router()->ingest_receive(
             ripple::peer::TransportKind::quic,
-            ripple::peer::ReceiveKind::datagram, endpoint, payload);
+            ripple::peer::ReceiveKind::datagram, endpoint, peer_hash, payload);
       });
 
   // quic server: listen for connection events
   quic_transport_receive_connection = quic->datagram_received_ev.connect(
       [this](const transport::packet::Endpoint &endpoint,
-             const std::vector<uint8_t> &payload) {
+             const std::string &peer_hash, const std::vector<uint8_t> &payload) {
         this->peer->get_router()->ingest_receive(
             ripple::peer::TransportKind::quic,
-            ripple::peer::ReceiveKind::datagram, endpoint, payload);
+            ripple::peer::ReceiveKind::datagram, endpoint, peer_hash, payload);
       });
 
   quic_transport_stream_receive_connection = quic->stream_received_ev.connect(
       [this](const transport::packet::Endpoint &endpoint,
-             const std::vector<uint8_t> &payload) {
+             const std::string &peer_hash, const std::vector<uint8_t> &payload) {
         this->peer->get_router()->ingest_receive(
             ripple::peer::TransportKind::quic,
-            ripple::peer::ReceiveKind::stream, endpoint, payload);
+            ripple::peer::ReceiveKind::stream, endpoint, peer_hash, payload);
       });
 
   // subscribe to router new peer events
   peer->get_router()->endpoint_added.connect(
-      [this](const transport::packet::Endpoint &endpoint) {
-        quic_client->add_endpoint(endpoint);
+      [this](const transport::packet::Endpoint &endpoint,
+             const std::string &peer_hash) {
+        quic_client->add_endpoint(endpoint, peer_hash);
       });
 
   // update stats when available

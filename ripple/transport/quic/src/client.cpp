@@ -126,7 +126,8 @@ QUIC_CREDENTIAL_CONFIG QuicClient::init_create_cred_config() {
   return cred;
 };
 
-bool QuicClient::add_endpoint(const packet::Endpoint &endpoint) {
+bool QuicClient::add_endpoint(const packet::Endpoint &endpoint,
+                              const std::string &expected_peer_hash) {
   reap_closed_connections();
 
   if (!initialized || !registration || !configuration) {
@@ -137,6 +138,7 @@ bool QuicClient::add_endpoint(const packet::Endpoint &endpoint) {
   auto active_connection = std::make_unique<ActiveConnection>();
   active_connection->context.client = this;
   active_connection->context.peer.endpoint = endpoint;
+  active_connection->context.peer.expected_peer_hash = expected_peer_hash;
 
   active_connection->connection = std::make_unique<MsQuicConnection>(
       *registration, CleanUpManual, quic_conn_callback,
@@ -185,28 +187,29 @@ QUIC_STATUS QUIC_API QuicClient::quic_conn_callback(MsQuicConnection *conn,
     break;
   }
   case QUIC_CONNECTION_EVENT_PEER_CERTIFICATE_RECEIVED: {
-    // spki pinning (from eg disco pkt)
-
-    // if expected empty, accept anything
-    if (ctx->peer.expected_spki_hash.empty()) {
-      return QUIC_STATUS_SUCCESS;
-    }
-
-    // get peer cert
-    util::cert::cert_ptr peer_cert(
-        static_cast<X509 *>(ev->PEER_CERTIFICATE_RECEIVED.Certificate));
-
-    if (!peer_cert) {
+    auto *raw_cert =
+        static_cast<X509 *>(ev->PEER_CERTIFICATE_RECEIVED.Certificate);
+    if (!raw_cert) {
       ctx->client->logger->critical("no peer cert");
       return QUIC_STATUS_BAD_CERTIFICATE;
     }
-    auto got = util::cert::hash_cert_spki(peer_cert);
-    if (got != ctx->peer.expected_spki_hash) {
+
+    util::cert::cert_ptr peer_cert(X509_dup(raw_cert));
+    if (!peer_cert) {
+      ctx->client->logger->critical("X509_dup failed");
+      return QUIC_STATUS_BAD_CERTIFICATE;
+    }
+    auto hash_bytes = util::cert::hash_cert_spki(peer_cert);
+    ctx->peer.verified_peer_hash = util::cert::spki_hash_to_b64(hash_bytes);
+
+    if (!ctx->peer.expected_peer_hash.empty() &&
+        ctx->peer.verified_peer_hash != ctx->peer.expected_peer_hash) {
       ctx->client->logger->critical("SPKI hash mismatch — possible MITM");
       return QUIC_STATUS_BAD_CERTIFICATE;
     }
-    ctx->client->logger->info("[conn {}] peer SPKI verified",
-                              ctx->peer.endpoint.to_string());
+    ctx->client->logger->info("[conn {}] peer SPKI verified: {}",
+                              ctx->peer.endpoint.to_string(),
+                              ctx->peer.verified_peer_hash);
     break;
   }
 
@@ -222,7 +225,8 @@ QUIC_STATUS QUIC_API QuicClient::quic_conn_callback(MsQuicConnection *conn,
                               ctx->peer.endpoint.to_string(),
                               ev->DATAGRAM_RECEIVED.Buffer->Length);
 
-    ctx->client->datagram_received_ev(ctx->peer.endpoint, payload);
+    ctx->client->datagram_received_ev(ctx->peer.endpoint,
+                                       ctx->peer.verified_peer_hash, payload);
 
     break;
   }

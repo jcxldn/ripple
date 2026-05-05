@@ -12,6 +12,8 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace ripple::transport::quic {
@@ -46,9 +48,13 @@ private:
   std::unordered_set<MsQuicConnection *> active_connections;
   bool shutting_down = false;
 
+  std::mutex conn_hash_mutex;
+  std::unordered_map<void *, std::string> conn_to_peer_hash;
+
   struct StreamCallbackContext {
     QuicTransport *transport = nullptr;
     transport::packet::Endpoint remote_endpoint{};
+    std::string peer_hash;
   };
 
   bool protocol_init();
@@ -65,10 +71,10 @@ private:
 
 public:
   boost::signals2::signal<void(const transport::packet::Endpoint &,
-                               const std::vector<uint8_t> &)>
+                               const std::string &, const std::vector<uint8_t> &)>
       datagram_received_ev;
   boost::signals2::signal<void(const transport::packet::Endpoint &,
-                               const std::vector<uint8_t> &)>
+                               const std::string &, const std::vector<uint8_t> &)>
       stream_received_ev;
   boost::signals2::signal<void(const transport::packet::Endpoint &,
                                const transport::stats::NetworkStats &)>
