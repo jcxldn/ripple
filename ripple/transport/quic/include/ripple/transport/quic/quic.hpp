@@ -55,6 +55,7 @@ private:
     QuicTransport *transport = nullptr;
     transport::packet::Endpoint remote_endpoint{};
     std::string peer_hash;
+    std::vector<uint8_t> buffer;
   };
 
   bool protocol_init();

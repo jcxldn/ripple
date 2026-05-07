@@ -301,22 +301,18 @@ QUIC_STATUS QUIC_API QuicTransport::quic_stream_callback(
   switch (ev->Type) {
   case QUIC_STREAM_EVENT_RECEIVE: {
     uint64_t total = ev->RECEIVE.TotalBufferLength;
-    std::vector<uint8_t> payload;
-    payload.reserve(static_cast<size_t>(total));
 
     for (uint32_t i = 0; i < ev->RECEIVE.BufferCount; ++i) {
       const auto &buffer = ev->RECEIVE.Buffers[i];
       if (!buffer.Buffer || buffer.Length == 0) {
         continue;
       }
-      payload.insert(payload.end(), buffer.Buffer,
-                     buffer.Buffer + buffer.Length);
+      stream_ctx->buffer.insert(stream_ctx->buffer.end(), buffer.Buffer,
+                                buffer.Buffer + buffer.Length);
     }
 
     qt->logger->info("[stream {}] rx {} bytes", static_cast<void *>(stream),
                      total);
-    qt->stream_received_ev(stream_ctx->remote_endpoint, stream_ctx->peer_hash,
-                           payload);
     // Return SUCCESS to signal all bytes consumed; MsQuic will not deliver
     // them again. Use QUIC_STATUS_PENDING + StreamReceiveComplete() for async.
     // -> return QUIC_STATUS_SUCCESS when data consumed!
@@ -330,9 +326,14 @@ QUIC_STATUS QUIC_API QuicTransport::quic_stream_callback(
     }
     break;
   case QUIC_STREAM_EVENT_PEER_SEND_SHUTDOWN:
-    // Peer sent FIN — graceful half-close of their send side.
-    qt->logger->debug("[stream {}] peer send shutdown",
-                      static_cast<void *>(stream));
+    // Peer sent FIN — graceful half-close of their send side. Stream is now
+    // complete; emit the fully-assembled buffer.
+    qt->logger->debug("[stream {}] peer send shutdown ({} bytes total)",
+                      static_cast<void *>(stream), stream_ctx->buffer.size());
+    if (!stream_ctx->buffer.empty()) {
+      qt->stream_received_ev(stream_ctx->remote_endpoint, stream_ctx->peer_hash,
+                             stream_ctx->buffer);
+    }
     break;
   case QUIC_STREAM_EVENT_PEER_SEND_ABORTED:
     qt->logger->warn("[stream {}] peer send aborted, error={}",
