@@ -23,9 +23,6 @@ target_include_directories(${PROJECT}
 )
 
 
-find_package(OpenSSL REQUIRED)
-
-
-target_link_libraries(${PROJECT} PUBLIC ripple::util::prng OpenSSL)
+target_link_libraries(${PROJECT} PUBLIC ripple::util::prng ripple::lib::quictls)
 
 install(TARGETS ${PROJECT} DESTINATION lib)
