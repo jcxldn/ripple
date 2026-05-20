@@ -1,10 +1,15 @@
-FetchContent_Declare(
-  msquic
-  GIT_REPOSITORY https://github.com/microsoft/msquic.git
-  GIT_TAG        v2.5.7
-)
+if(RIPPLE_USE_EXTERNAL_MSQUIC)
+  find_package(msquic REQUIRED)
+else()
 
-FetchContent_MakeAvailable(msquic)
+  FetchContent_Declare(
+    msquic
+    GIT_REPOSITORY https://github.com/microsoft/msquic.git
+    GIT_TAG        v2.5.7
+  )
+
+  FetchContent_MakeAvailable(msquic)
+endif()
 
 # msquic doesn't export inc by default
 add_library(ripple_lib_msquic INTERFACE)

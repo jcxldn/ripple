@@ -1,6 +1,7 @@
 # Boost 1.80+ required for boost::asio::cancellation_signal
 find_package(Boost 1.80.0 COMPONENTS filesystem) # asio, signals2 are header-only
 
+
 if(Boost_FOUND)
   message("Using system boost ${Boost_VERSION_STRING}")
 
@@ -10,7 +11,7 @@ if(Boost_FOUND)
 
   add_library(Boost::asio ALIAS boost_iface)
   add_library(Boost::signals2 ALIAS boost_iface)
-else()
+elseif(NOT RIPPLE_USE_EXTERNAL_BOOST)
   message("Boost not found, downloading from git...")
   FetchContent_Declare(
     Boost

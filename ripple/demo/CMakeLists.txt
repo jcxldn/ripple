@@ -24,3 +24,7 @@ target_link_libraries(${PROJECT}
 )
 
 install(TARGETS ${PROJECT} DESTINATION lib)
+
+if(NOT RIPPLE_BUILD_SHARED)
+    set_target_properties(${PROJECT} PROPERTIES LINK_FLAGS "-static")
+endif()

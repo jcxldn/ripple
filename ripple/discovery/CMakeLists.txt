@@ -31,7 +31,7 @@ target_link_libraries(${PROJECT} PUBLIC
     Boost::signals2
 )
 
-if (BUILD_TESTING)
+if (RIPPLE_BUILD_TEST)
   add_executable(${PROJECT}_integration
       ${CMAKE_CURRENT_LIST_DIR}/src/integration_main.cpp)
   target_link_libraries(${PROJECT}_integration PRIVATE ${PROJECT})
