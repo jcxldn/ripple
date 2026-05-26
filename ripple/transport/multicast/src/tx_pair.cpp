@@ -30,7 +30,14 @@ TransmitPair::~TransmitPair() {
 }
 
 size_t TransmitPair::send(boost::asio::mutable_buffer &buf) {
-  size_t sent_bytes = socket->send_to(buf, (*endpoint.get()));
+  boost::system::error_code ec;
+  size_t sent_bytes = socket->send_to(buf, (*endpoint.get()), 0, ec);
+
+  if (ec) {
+    logger->warn("Failed to send on tx pair endpoint {}: {}",
+                 endpoint->address().to_string(), ec.message());
+    return 0;
+  }
 
   logger->trace("Sent {} bytes on interface IP {}", sent_bytes,
                 endpoint->address().to_string());
