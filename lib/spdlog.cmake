@@ -1,5 +1,6 @@
 if(RIPPLE_USE_EXTERNAL_SPDLOG)
   find_package(spdlog REQUIRED)
+  find_package(fmt REQUIRED)
 else()
   FetchContent_Declare(
     spdlog
