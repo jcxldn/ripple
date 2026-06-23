@@ -5,6 +5,7 @@ add_library(ripple::lib::msquic ALIAS ripple_lib_msquic)
 
 if(RIPPLE_USE_EXTERNAL_MSQUIC)
   find_package(msquic REQUIRED)
+  find_package(OpenSSL REQUIRED)
 
   add_library(OpenSSL INTERFACE)
   target_link_libraries(OpenSSL INTERFACE OpenSSL::SSL OpenSSL::Crypto)
