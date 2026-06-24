@@ -1,6 +1,4 @@
 if(RIPPLE_USE_EXTERNAL_SPDLOG)
-  option(SPDLOG_FMT_EXTERNAL "Link spdlog against an external fmt library" ON)
-
   find_package(fmt REQUIRED)
   find_package(spdlog REQUIRED)
 else()

@@ -21,6 +21,11 @@ target_include_directories(${PROJECT}
         ${CMAKE_CURRENT_LIST_DIR}/include/
 )
 
-target_link_libraries(${PROJECT} PUBLIC spdlog)
+target_link_libraries(${PROJECT} PUBLIC spdlog::spdlog)
+
+if(RIPPLE_USE_EXTERNAL_SPDLOG)
+    target_compile_definitions(${PROJECT} PUBLIC SPDLOG_FMT_EXTERNAL)
+    target_link_libraries(${PROJECT} PUBLIC fmt::fmt)
+endif()
 
 install(TARGETS ${PROJECT} DESTINATION lib)
