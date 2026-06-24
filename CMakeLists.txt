@@ -4,8 +4,8 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5) # yaml-cpp on modern CMake
 
 project(
     ripple
-    VERSION 0.0.1
-    DESCRIPTION "meta-project"
+    VERSION 1.0.0
+    DESCRIPTION "networking library"
     LANGUAGES CXX
 )
 
@@ -78,6 +78,6 @@ add_subdirectory(ripple/peer)
 
 add_subdirectory(ripple/discovery)
 
-if (RIPPLE_BUILD_DEMO)
+if(RIPPLE_BUILD_DEMO)
     add_subdirectory(ripple/demo)
 endif()
