@@ -4,7 +4,7 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5) # yaml-cpp on modern CMake
 
 project(
     ripple
-    VERSION 1.0.0
+    VERSION 1.0.1
     DESCRIPTION "networking library"
     LANGUAGES CXX
 )
@@ -28,7 +28,6 @@ option(RIPPLE_BUILD_DEMO "Compile the ripple demo application" OFF)
 
 if((DEFINED PROJECT_IS_TOP_LEVEL AND PROJECT_IS_TOP_LEVEL) OR (NOT DEFINED PROJECT_IS_TOP_LEVEL
                                                                    AND CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR))
-    set(RIPPLE_BUILD_DEMO ON CACHE BOOL "" FORCE)
 
     if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
         # https://github.com/gabime/spdlog/blob/2e71fdf3c1e8d6299b8129e402ab705e6fb494ba/CMakeLists.txt#L21-L27

@@ -23,3 +23,4 @@ target_include_directories(${PROJECT}
 target_link_libraries(${PROJECT} PUBLIC ripple::logger ripple::util::prng Boost::asio Boost::signals2)
 
 install(TARGETS ${PROJECT} DESTINATION lib)
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)

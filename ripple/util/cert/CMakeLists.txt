@@ -26,3 +26,4 @@ target_include_directories(${PROJECT}
 target_link_libraries(${PROJECT} PUBLIC ripple::util::prng ripple::lib::quictls)
 
 install(TARGETS ${PROJECT} DESTINATION lib)
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)

@@ -18,3 +18,4 @@ target_include_directories(${PROJECT}
 target_link_libraries(${PROJECT} INTERFACE ripple::logger cereal::cereal)
 
 install(TARGETS ${PROJECT} DESTINATION lib)
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)

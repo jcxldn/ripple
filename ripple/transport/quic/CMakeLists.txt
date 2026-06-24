@@ -34,3 +34,4 @@ target_link_libraries(${PROJECT} PUBLIC
 )
 
 install(TARGETS ${PROJECT} DESTINATION lib)
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)

@@ -15,3 +15,4 @@ target_include_directories(${PROJECT}
 )
 
 install(TARGETS ${PROJECT} DESTINATION lib)
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)
