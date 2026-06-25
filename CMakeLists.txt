@@ -80,3 +80,41 @@ add_subdirectory(ripple/discovery)
 if(RIPPLE_BUILD_DEMO)
     add_subdirectory(ripple/demo)
 endif()
+
+
+include(CMakePackageConfigHelpers)
+
+if(NOT RIPPLE_USE_EXTERNAL_SPDLOG OR NOT RIPPLE_USE_EXTERNAL_CEREAL OR NOT RIPPLE_USE_EXTERNAL_MSQUIC)
+    message(WARNING
+        "ripple: one or more dependencies are bundled via FetchContent. "
+        "ripple will not propagate these dependencies transitively "
+        "Set all RIPPLE_USE_EXTERNAL_* to ON for a fully relocatable installation."
+    )
+endif()
+
+set(_ripple_export_targets ripple_lib_msquic ripple_lib_quictls)
+if(TARGET boost_iface)
+    list(APPEND _ripple_export_targets boost_iface)
+endif()
+
+install(TARGETS ${_ripple_export_targets}
+    EXPORT ripple-targets
+)
+
+install(EXPORT ripple-targets
+    FILE rippleTargets.cmake
+    NAMESPACE ripple::
+    DESTINATION lib/cmake/ripple
+)
+
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/rippleConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/rippleConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/rippleConfigVersion.cmake
+    DESTINATION lib/cmake/ripple
+)

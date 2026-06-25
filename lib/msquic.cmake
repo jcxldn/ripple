@@ -1,6 +1,7 @@
 
 # msquic doesn't export inc by default
 add_library(ripple_lib_msquic INTERFACE)
+set_target_properties(ripple_lib_msquic PROPERTIES EXPORT_NAME msquic)
 add_library(ripple::lib::msquic ALIAS ripple_lib_msquic)
 
 if(RIPPLE_USE_EXTERNAL_MSQUIC)
@@ -23,12 +24,20 @@ else()
   FetchContent_MakeAvailable(msquic)
 
 
-target_include_directories(ripple_lib_msquic INTERFACE ${msquic_SOURCE_DIR}/src/inc)
+target_include_directories(ripple_lib_msquic INTERFACE $<BUILD_INTERFACE:${msquic_SOURCE_DIR}/src/inc>)
 endif()
 
-target_link_libraries(ripple_lib_msquic INTERFACE msquic)
+target_link_libraries(ripple_lib_msquic INTERFACE
+    $<BUILD_INTERFACE:msquic>
+    $<$<BOOL:${RIPPLE_USE_EXTERNAL_MSQUIC}>:$<INSTALL_INTERFACE:msquic>>
+)
 
 add_library(ripple_lib_quictls INTERFACE)
+set_target_properties(ripple_lib_quictls PROPERTIES EXPORT_NAME quictls)
 add_library(ripple::lib::quictls ALIAS ripple_lib_quictls)
 
-target_link_libraries(ripple_lib_quictls INTERFACE OpenSSL)
+target_link_libraries(ripple_lib_quictls INTERFACE
+    $<BUILD_INTERFACE:OpenSSL>
+    $<INSTALL_INTERFACE:OpenSSL::SSL>
+    $<INSTALL_INTERFACE:OpenSSL::Crypto>
+)

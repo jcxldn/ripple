@@ -7,6 +7,7 @@ project(
 )
 
 add_library(${PROJECT})
+set_target_properties(${PROJECT} PROPERTIES EXPORT_NAME discovery)
 add_library(ripple::discovery ALIAS ${PROJECT})
 
 target_sources(${PROJECT}
@@ -18,10 +19,11 @@ target_sources(${PROJECT}
 
 target_include_directories(${PROJECT}
     PUBLIC
-        ${CMAKE_CURRENT_LIST_DIR}/include/
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+        $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(${PROJECT} PUBLIC 
+target_link_libraries(${PROJECT} PUBLIC
     ripple::router
     ripple::util::cert
     ripple::logger
@@ -39,5 +41,10 @@ if (RIPPLE_BUILD_TEST)
   set_tests_properties(discovery_two_node_integration PROPERTIES TIMEOUT 15)
 endif()
 
-install(TARGETS ${PROJECT} DESTINATION lib)
+install(TARGETS ${PROJECT}
+    EXPORT ripple-targets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)

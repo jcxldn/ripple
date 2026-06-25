@@ -7,6 +7,7 @@ project(
 )
 
 add_library(${PROJECT})
+set_target_properties(${PROJECT} PROPERTIES EXPORT_NAME util_cert)
 add_library(ripple::util::cert ALIAS ${PROJECT})
 
 target_sources(${PROJECT}
@@ -19,11 +20,16 @@ target_sources(${PROJECT}
 
 target_include_directories(${PROJECT}
     PUBLIC
-        ${CMAKE_CURRENT_LIST_DIR}/include/
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+        $<INSTALL_INTERFACE:include>
 )
-
 
 target_link_libraries(${PROJECT} PUBLIC ripple::util::prng ripple::lib::quictls)
 
-install(TARGETS ${PROJECT} DESTINATION lib)
+install(TARGETS ${PROJECT}
+    EXPORT ripple-targets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)

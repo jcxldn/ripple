@@ -7,6 +7,7 @@ project(
 )
 
 add_library(${PROJECT})
+set_target_properties(${PROJECT} PROPERTIES EXPORT_NAME router)
 add_library(ripple::router ALIAS ${PROJECT})
 
 target_sources(${PROJECT}
@@ -16,7 +17,8 @@ target_sources(${PROJECT}
 
 target_include_directories(${PROJECT}
     PUBLIC
-        ${CMAKE_CURRENT_LIST_DIR}/include/
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+        $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(${PROJECT}
@@ -25,5 +27,10 @@ target_link_libraries(${PROJECT}
         ripple::transport::stats
 )
 
-install(TARGETS ${PROJECT} DESTINATION lib)
+install(TARGETS ${PROJECT}
+    EXPORT ripple-targets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+)
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)

@@ -7,15 +7,23 @@ project(
 )
 
 add_library(${PROJECT} INTERFACE)
+set_target_properties(${PROJECT} PROPERTIES EXPORT_NAME serialization)
 add_library(ripple::serialization ALIAS ${PROJECT})
 
 
 target_include_directories(${PROJECT}
     INTERFACE
-        ${CMAKE_CURRENT_LIST_DIR}/include/
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+        $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(${PROJECT} INTERFACE ripple::logger cereal::cereal)
+target_link_libraries(${PROJECT} INTERFACE
+    ripple::logger
+    $<BUILD_INTERFACE:cereal::cereal>
+    $<$<BOOL:${RIPPLE_USE_EXTERNAL_CEREAL}>:$<INSTALL_INTERFACE:cereal::cereal>>
+)
 
-install(TARGETS ${PROJECT} DESTINATION lib)
+install(TARGETS ${PROJECT}
+    EXPORT ripple-targets
+)
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)

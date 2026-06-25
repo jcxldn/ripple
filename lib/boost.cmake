@@ -7,7 +7,11 @@ if(Boost_FOUND)
 
   # fake boost
   add_library(boost_iface INTERFACE)
-  target_link_libraries(boost_iface INTERFACE Boost::headers)
+  set_target_properties(boost_iface PROPERTIES EXPORT_NAME boost)
+  target_link_libraries(boost_iface INTERFACE
+      $<BUILD_INTERFACE:Boost::headers>
+      $<INSTALL_INTERFACE:Boost::headers>
+  )
 
   add_library(Boost::asio ALIAS boost_iface)
   add_library(Boost::signals2 ALIAS boost_iface)
@@ -20,4 +24,13 @@ elseif(NOT RIPPLE_USE_EXTERNAL_BOOST)
   )
 
   FetchContent_MakeAvailable(Boost)
+
+  add_library(boost_iface INTERFACE)
+  set_target_properties(boost_iface PROPERTIES EXPORT_NAME boost)
+  target_link_libraries(boost_iface INTERFACE
+      $<BUILD_INTERFACE:Boost::headers>
+      $<INSTALL_INTERFACE:Boost::headers>
+  )
+  add_library(Boost::asio ALIAS boost_iface)
+  add_library(Boost::signals2 ALIAS boost_iface)
 endif()

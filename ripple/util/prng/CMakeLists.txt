@@ -7,12 +7,16 @@ project(
 )
 
 add_library(${PROJECT} INTERFACE)
+set_target_properties(${PROJECT} PROPERTIES EXPORT_NAME util_prng)
 add_library(ripple::util::prng ALIAS ${PROJECT})
 
 target_include_directories(${PROJECT}
     INTERFACE
-        ${CMAKE_CURRENT_LIST_DIR}/include/
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+        $<INSTALL_INTERFACE:include>
 )
 
-install(TARGETS ${PROJECT} DESTINATION lib)
+install(TARGETS ${PROJECT}
+    EXPORT ripple-targets
+)
 install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/include/ DESTINATION include)
